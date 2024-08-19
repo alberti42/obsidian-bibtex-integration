@@ -1,0 +1,119 @@
+/* styles.css */
+
+/* Make sure the input field takes the full width of its parent */
+.plugin-comment {
+	margin-top: 5px;
+	width: 100%;
+	box-sizing: border-box; /* Ensure padding is included in the element's total width and height */
+}
+
+.plugin-comment-annotation.plugin-comment-placeholder {
+	color: #CCCCCC; /* Standard placeholder color */
+}
+
+.plugin-comment.plugin-comment-hidden,
+.plugin-comment.plugin-comment-placeholder {
+	display: none;
+}
+
+.plugin-comment-annotation > p:first-child {
+  margin-top: 0;
+}
+
+.plugin-comment-annotation > p:last-child {
+  margin-bottom: 0;
+}
+
+/* Mobile specific styles */
+.is-mobile .plugin-comment-annotation::after {
+        content: "" !important;
+}
+
+.plugin-comment-annotation {
+	width: 100%;
+}
+
+.plugin-comment-annotation-editable {
+	cursor: text;
+}
+
+/* Show comment container when hovering over the plugin container */
+.setting-item:hover .plugin-comment.plugin-comment-placeholder {
+	display: block;
+}
+
+/* Setting pane */
+.plugin-comment-instructions {
+	margin: none;
+	padding: none;
+}
+
+div.plugin-comment-instructions em {
+	font-weight: 500;
+}
+
+div.plugin-comment-instructions strong {
+	font-weight: 500;
+}
+
+.plugin-comment-instructions > p:first-child {
+  margin-top: 0;
+}
+
+.plugin-comment-instructions > p:last-child {
+  margin-bottom: 0;
+}
+
+.plugin-comment-backup-table,
+.plugin-comment-uninstalled {
+	margin-left:40px;
+}
+
+
+.is-mobile .plugin-comment-backup-table,
+.is-mobile .plugin-comment-uninstalled {
+	margin-left:0;
+}
+
+
+.plugin-comment-backup-table {
+    display: table;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.plugin-comment-backup-table-row {
+    display: table-row;
+}
+
+.plugin-comment-backup-table-cell {
+    display: table-cell;
+    padding: 8px 0 8px 0;
+    border-bottom: 1px solid var(--background-modifier-border);
+    vertical-align: middle;
+}
+
+.plugin-comment-backup-table-row.header .plugin-comment-backup-table-cell {
+	font-weight: var(--font-semibold);
+}
+
+.plugin-comment-backup-name {
+    cursor: text;
+}
+
+.plugin-comment-export-buttons {
+	flex-direction: column;
+	justify-content: flex-start;
+	align-items: normal;
+}
+
+.plugin-comment-backup-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+
+.is-mobile .plugin-comment-backup-buttons {
+	flex-direction: column;
+}
