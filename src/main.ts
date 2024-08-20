@@ -10,6 +10,41 @@ import {parse} from "./peggy.mjs"
 
 import { exec } from 'child_process';
 
+import { promisify } from 'util';
+
+const execPromise = promisify(exec);
+
+const bookmark_resolver_script = `use framework "Foundation"
+use scripting additions
+
+on resolveBookmarkFromBase64(base64String)
+    -- Decode the Base64 string into NSData
+    set bookmarkData to current application's NSData's alloc()'s initWithBase64EncodedString:base64String options:0
+    
+    -- Check if the bookmark data was successfully decoded
+    if bookmarkData = missing value then
+        return "Error: Failed to decode Base64 string."
+    end if
+    
+    -- Set up variables to resolve the bookmark
+    set {resolvedURL, missing value, |error|} to current application's NSURL's URLByResolvingBookmarkData:bookmarkData options:0 relativeToURL:(missing value) bookmarkDataIsStale:(reference) |error|:(reference)
+    
+    -- Check if there was an error during resolution
+    if resolvedURL = missing value then
+        return "Error: " & (|error|'s localizedDescription() as text)
+    else
+        -- Return the resolved file path as POSIX path
+        return resolvedURL's |path|() as text
+    end if
+end resolveBookmarkFromBase64
+
+-- Read the Base64 bookmark string from the argument
+on run argv
+    set base64Bookmark to item 1 of argv
+    return resolveBookmarkFromBase64(base64Bookmark)
+end run
+`;
+
 interface Location {
     start: Position;
     end: Position;
@@ -104,19 +139,30 @@ async function writeTempFile(data: Uint8Array): Promise<string> {
     return tempFilePath;
 }
 
-// Function to execute the command to resolve the alias
-function resolveAlias(tempFilePath: string) {
+
+// Function to resolve bookmark using the Swift command-line tool
+function resolveBookmarkWithTool(bookmarkPath: string): Promise<string> {
     return new Promise((resolve, reject) => {
-        const command = `/Users/andrea/bin/alisma -a "${tempFilePath}"`;
-        exec(command, (error, stdout, stderr) => {
+        exec(`/Users/andrea/bin/bookmark_resolver "${bookmarkPath}"`, (error, stdout, stderr) => {
             if (error) {
-                reject(error);
+                reject(`Error resolving bookmark: ${error}`);
             } else {
                 resolve(stdout.trim());
             }
         });
     });
 }
+
+async function resolveBookmarkWithOsascript(base64Bookmark: string): Promise<string> {
+    try {
+        const { stdout } = await execPromise(`osascript /Users/andrea/Desktop/bookmark_resolver.scpt "${base64Bookmark}"`);
+        return stdout.trim();  // Return the resolved path
+    } catch (error) {
+        console.error(`Error resolving bookmark: ${error}`);
+        throw error;  // Re-throw the error so it can be handled by the caller
+    }
+}
+
 
 interface Bookmark {
     bookmark: Buffer;
@@ -146,18 +192,8 @@ async function processAlias(bibEntry: BibTeXEntry) {
             if(isBookmark(plistData)) {
                 const aliasData = bufferToUint8Array(plistData.bookmark);
 
-                console.log(uint8ArrayToBase64(aliasData));
-
-
-                // Write binary data to a temporary file
-                const tempFilePath = await writeTempFile(aliasData);
-
-                // Run the command to resolve the alias
-                // const resolvedPath = await resolveAlias(tempFilePath);
-                // console.log('Resolved path:', resolvedPath);
-
-                // Clean up the temporary file
-                // fs.unlinkSync(tempFilePath);
+                // console.log(await resolveBookmarkWithTool(await writeTempFile(aliasData)));
+                console.log("Result:",await resolveBookmarkWithOsascript(uint8ArrayToBase64(aliasData)));
             }
             
         }
