@@ -1,10 +1,14 @@
 // main.ts
 
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
-import { promises as fs } from 'fs';
+import * as fs from 'fs';
 import * as path from 'path';
-import { replaceTscAliasPaths } from 'tsc-alias';
+import * as os from 'os';  // Import the os module to get the system temp directory
+import * as bplist from 'bplist-parser';
+
 import {parse} from "./peggy.mjs"
+
+import { exec } from 'child_process';
 
 interface Location {
     start: Position;
@@ -54,6 +58,115 @@ function base64ToUint8Array(base64: string): Uint8Array {
     return bytes;
 }
 
+function uint8ArrayToBase64(uint8Array: Uint8Array): string {
+    let binaryString = '';
+    for (let i = 0; i < uint8Array.length; i++) {
+        binaryString += String.fromCharCode(uint8Array[i]);
+    }
+    return btoa(binaryString);
+}
+
+function bufferToUint8Array(buffer: Buffer): Uint8Array {
+    return new Uint8Array(buffer);
+}
+
+// Function to convert binary plist to JSON
+async function convertBinaryPlistToJson(binaryData: Uint8Array): Promise<unknown> {
+    try {
+        // Parse the binary plist data
+        const [parsedData] = bplist.parseBuffer(Buffer.from(binaryData));
+        return parsedData;
+    } catch (error) {
+        console.error("Error parsing binary plist:", error);
+        throw error;
+    }
+}
+
+// Example usage with binary data
+async function processBinaryPlist(binaryData: Uint8Array): Promise<unknown> {
+    try {
+        const jsonData = await convertBinaryPlistToJson(binaryData);
+        return jsonData;
+    } catch (error) {
+        console.error("Failed to process binary plist:", error);
+        return null;
+    }
+}
+
+// Function to write the binary data to a temporary file
+async function writeTempFile(data: Uint8Array): Promise<string> {
+    const tempDir = os.tmpdir();  // Get the system temporary directory
+    let tempFilePath = path.join(tempDir, `temp_alias_${Date.now()}`);
+    console.log(tempFilePath);
+    tempFilePath = '/Users/andrea/Downloads/aliases/tmp.bookmark';
+
+    await fs.promises.writeFile(tempFilePath, Buffer.from(data));
+    return tempFilePath;
+}
+
+// Function to execute the command to resolve the alias
+function resolveAlias(tempFilePath: string) {
+    return new Promise((resolve, reject) => {
+        const command = `/Users/andrea/bin/alisma -a "${tempFilePath}"`;
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(stdout.trim());
+            }
+        });
+    });
+}
+
+interface Bookmark {
+    bookmark: Buffer;
+}
+
+function isBookmark(obj:unknown): obj is Bookmark {
+    if (typeof obj !== 'object' || obj === null) {
+        return false;
+    }
+
+    if(obj.hasOwnProperty('bookmark')) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+// Main function
+async function processAlias(bibEntry: BibTeXEntry) {
+    try {
+        // Convert Base64 to binary data
+        const binaryData = base64ToUint8Array(bibEntry['bdsk-file-1']);
+
+        const plistData = await processBinaryPlist(binaryData);
+        
+        if(plistData) {
+            if(isBookmark(plistData)) {
+                const aliasData = bufferToUint8Array(plistData.bookmark);
+
+                console.log(uint8ArrayToBase64(aliasData));
+
+
+                // Write binary data to a temporary file
+                const tempFilePath = await writeTempFile(aliasData);
+
+                // Run the command to resolve the alias
+                // const resolvedPath = await resolveAlias(tempFilePath);
+                // console.log('Resolved path:', resolvedPath);
+
+                // Clean up the temporary file
+                // fs.unlinkSync(tempFilePath);
+            }
+            
+        }
+        
+        
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
 
 export default class BibtexIntegration extends Plugin {
     settings: BibtexIntegrationSettings = DEFAULT_SETTINGS;
@@ -108,7 +221,7 @@ export default class BibtexIntegration extends Plugin {
             callback: async () => {
                 const bibEntry = this.bibEntries['Gibble:2024'];
                 if(bibEntry) {
-                    console.log(base64ToUint8Array(bibEntry['bdsk-file-1']));
+                    processAlias(bibEntry);
                 }                
             }
         });
@@ -119,7 +232,7 @@ export default class BibtexIntegration extends Plugin {
     onunload() {
         
     }
-    
+
     async parseBibtex() {
         if (this.data === "") {
             const t0 = Date.now();
@@ -191,7 +304,7 @@ export default class BibtexIntegration extends Plugin {
     // Function to read the .bib file and return its contents
     async readBibFile(): Promise<string> {
       try {
-        const data = await fs.readFile(this.filePath, 'utf8');
+        const data = await fs.promises.readFile(this.filePath, 'utf8');
         return data;
       } catch (err) {
         console.error("Error reading file:", err);

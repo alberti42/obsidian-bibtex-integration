@@ -20,3 +20,5 @@ data.json
 .DS_Store
 
 dist/*
+
+bookmark_resolver/bookmark_resolver
