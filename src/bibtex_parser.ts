@@ -7,7 +7,7 @@ import { BibTeXDict, BibTeXEntry, MaxMatchesReachedError } from 'types';
 const parserDebug = true;
 
 export class BibtexParser {
-    bibEntries: BibTeXDict = {};
+    bibEntries: BibTeXDict | null = null;
     
     constructor(public bibtex_filePath:string, private maxMatches = 100) {
 
@@ -71,8 +71,20 @@ export class BibtexParser {
         requestIdleCallback(processNextChunk);
     }
 
-    getBibEntry(citekey:string): BibTeXEntry {
-        return this.bibEntries[citekey];
+    setBibtexFilepath(bibtex_filePath:string) {
+        this.bibEntries = null;
+        this.bibtex_filePath = bibtex_filePath;
+    }
+
+    async getBibEntry(citekey:string): Promise<BibTeXEntry | null> {
+        if(!this.bibEntries) {
+            await this.parseBibtex();
+        }
+        if(this.bibEntries) {
+            return this.bibEntries[citekey];
+        } else {
+            return null;
+        }
     }
 
     // Function to read the .bib file and return its contents

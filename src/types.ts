@@ -1,5 +1,7 @@
 // types.ts
 
+import { PluginManifest } from "obsidian";
+
 export interface Location {
     start: Position;
     end: Position;
@@ -36,7 +38,6 @@ export interface BibtexIntegrationSettings {
 export interface Bookmark {
     bookmark: Buffer;
 }
-
 
 export function isBookmark(obj:unknown): obj is Bookmark {
     if (typeof obj !== 'object' || obj === null) {

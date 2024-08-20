@@ -2,7 +2,32 @@
 
 import * as bplist from 'bplist-parser';
 import { spawn } from 'child_process';
+import * as path from 'path';
 import { BibTeXEntry, isBookmark } from 'types';
+import { pathToFileURL } from 'url';
+
+export function parseBdskUrl(url: string): { citekey: string; doc: number } | null {
+    // Regular expression to capture the citekey and the doc number
+    const regex = /x-bdsk:\/\/([^?]+)\?doc=(\d+)/;
+    
+    const match = url.match(regex);
+    
+    if (match) {
+        const citekey = decodeURIComponent(match[1]); // Decode the citekey
+        const doc = parseInt(match[2], 10); // Parse the doc number as an integer
+        
+        return { citekey, doc };
+    }
+    
+    return null; // Return null if the pattern doesn't match
+}
+
+// Convert a POSIX file path to a file URL with proper escaping
+export function posixToFileURL(posixPath: string): string {
+    const absolutePath = path.resolve(posixPath); // Ensure the path is absolute
+    const fileUrl = pathToFileURL(absolutePath);
+    return fileUrl.href; // Return the properly escaped file URL as a string
+}
 
 export function base64ToUint8Array(base64: string): Uint8Array {
     const binaryString = atob(base64);
@@ -85,7 +110,6 @@ export function bookmark_resolver(bookmark_resolver_path: string, base64Bookmark
     });
 }
 
-// Main function
 export async function resolveBookmark(bookmark_resolver_path:string, bibEntry: BibTeXEntry, bdsk_file: string): Promise<string|null> {
     try {
         // Convert Base64 to binary data
