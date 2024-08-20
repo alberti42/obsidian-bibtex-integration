@@ -4,6 +4,8 @@ import { App, Editor, MarkdownFileInfo, MarkdownView, Modal, Notice, Plugin, Plu
 import { promises as fs } from 'fs';
 import * as path from 'path';
 
+import {parse} from "./peggy.mjs"
+
 interface BibtexIntegrationSettings {
     mySetting: string;
 }
@@ -16,6 +18,7 @@ export default class BibtexIntegration extends Plugin {
     settings: BibtexIntegrationSettings = DEFAULT_SETTINGS;
 
     private filePath = path.join("/Users/andrea/Documents/Papers library", "Andrea's references.bib");
+    worker: Worker | null = null;
 
     async onload() {
         await this.loadSettings();
@@ -82,7 +85,11 @@ export default class BibtexIntegration extends Plugin {
         this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
 
         console.log("FINISHED LOADING");
-        this.parseBibtex();
+        window.setTimeout(async () => {
+            console.log('STARTING');
+            this.parseBibtex();
+            console.log('FINISHED');
+        }, 1000);
     }
 
     onunload() {
@@ -92,9 +99,31 @@ export default class BibtexIntegration extends Plugin {
     async parseBibtex() {
         const t0 = Date.now();
         const data = await this.readBibFile();
-        const t1 = Date.now();    
+        const t1 = Date.now();
         console.log("Bibtex file loaded in " + (t1 - t0) + " milliseconds.");
+
+        const t2 = Date.now();
+
+        // Create a new worker
+        this.worker = new Worker('path/to/parserWorker.js');
+        
+        // Post the data to the worker for parsing
+        this.worker.postMessage(data);
+
+        // Listen for the result from the worker
+        this.worker.onmessage = (event) => {
+            const result = event.data;  // Parsed result
+            const t3 = Date.now();
+            console.log("Bibtex file parsed in " + (t3 - t2) + " milliseconds.");
+            
+            // Handle the parsed result here, e.g., updating the UI
+        };
+
+        this.worker.onerror = (error) => {
+            console.error("Worker error:", error);
+        };
     }
+
 
     // Function to read the .bib file and return its contents
     async readBibFile(): Promise<string> {
