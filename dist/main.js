@@ -42,6 +42,1033 @@ module.exports = __toCommonJS(main_exports);
 var import_obsidian = require("obsidian");
 var import_fs = require("fs");
 var path = __toESM(require("path"));
+
+// src/peggy.mjs
+function peg$subclass(child, parent) {
+  function C() {
+    this.constructor = child;
+  }
+  C.prototype = parent.prototype;
+  child.prototype = new C();
+}
+function peg$SyntaxError(message, expected, found, location) {
+  var self = Error.call(this, message);
+  if (Object.setPrototypeOf) {
+    Object.setPrototypeOf(self, peg$SyntaxError.prototype);
+  }
+  self.expected = expected;
+  self.found = found;
+  self.location = location;
+  self.name = "SyntaxError";
+  return self;
+}
+peg$subclass(peg$SyntaxError, Error);
+function peg$padEnd(str, targetLength, padString) {
+  padString = padString || " ";
+  if (str.length > targetLength) {
+    return str;
+  }
+  targetLength -= str.length;
+  padString += padString.repeat(targetLength);
+  return str + padString.slice(0, targetLength);
+}
+peg$SyntaxError.prototype.format = function(sources) {
+  var str = "Error: " + this.message;
+  if (this.location) {
+    var src = null;
+    var k;
+    for (k = 0; k < sources.length; k++) {
+      if (sources[k].source === this.location.source) {
+        src = sources[k].text.split(/\r\n|\n|\r/g);
+        break;
+      }
+    }
+    var s = this.location.start;
+    var offset_s = this.location.source && typeof this.location.source.offset === "function" ? this.location.source.offset(s) : s;
+    var loc = this.location.source + ":" + offset_s.line + ":" + offset_s.column;
+    if (src) {
+      var e = this.location.end;
+      var filler = peg$padEnd("", offset_s.line.toString().length, " ");
+      var line = src[s.line - 1];
+      var last = s.line === e.line ? e.column : line.length + 1;
+      var hatLen = last - s.column || 1;
+      str += "\n --> " + loc + "\n" + filler + " |\n" + offset_s.line + " | " + line + "\n" + filler + " | " + peg$padEnd("", s.column - 1, " ") + peg$padEnd("", hatLen, "^");
+    } else {
+      str += "\n at " + loc;
+    }
+  }
+  return str;
+};
+peg$SyntaxError.buildMessage = function(expected, found) {
+  var DESCRIBE_EXPECTATION_FNS = {
+    literal: function(expectation) {
+      return '"' + literalEscape(expectation.text) + '"';
+    },
+    class: function(expectation) {
+      var escapedParts = expectation.parts.map(function(part) {
+        return Array.isArray(part) ? classEscape(part[0]) + "-" + classEscape(part[1]) : classEscape(part);
+      });
+      return "[" + (expectation.inverted ? "^" : "") + escapedParts.join("") + "]";
+    },
+    any: function() {
+      return "any character";
+    },
+    end: function() {
+      return "end of input";
+    },
+    other: function(expectation) {
+      return expectation.description;
+    }
+  };
+  function hex(ch) {
+    return ch.charCodeAt(0).toString(16).toUpperCase();
+  }
+  function literalEscape(s) {
+    return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\0/g, "\\0").replace(/\t/g, "\\t").replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/[\x00-\x0F]/g, function(ch) {
+      return "\\x0" + hex(ch);
+    }).replace(/[\x10-\x1F\x7F-\x9F]/g, function(ch) {
+      return "\\x" + hex(ch);
+    });
+  }
+  function classEscape(s) {
+    return s.replace(/\\/g, "\\\\").replace(/\]/g, "\\]").replace(/\^/g, "\\^").replace(/-/g, "\\-").replace(/\0/g, "\\0").replace(/\t/g, "\\t").replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/[\x00-\x0F]/g, function(ch) {
+      return "\\x0" + hex(ch);
+    }).replace(/[\x10-\x1F\x7F-\x9F]/g, function(ch) {
+      return "\\x" + hex(ch);
+    });
+  }
+  function describeExpectation(expectation) {
+    return DESCRIBE_EXPECTATION_FNS[expectation.type](expectation);
+  }
+  function describeExpected(expected2) {
+    var descriptions = expected2.map(describeExpectation);
+    var i, j;
+    descriptions.sort();
+    if (descriptions.length > 0) {
+      for (i = 1, j = 1; i < descriptions.length; i++) {
+        if (descriptions[i - 1] !== descriptions[i]) {
+          descriptions[j] = descriptions[i];
+          j++;
+        }
+      }
+      descriptions.length = j;
+    }
+    switch (descriptions.length) {
+      case 1:
+        return descriptions[0];
+      case 2:
+        return descriptions[0] + " or " + descriptions[1];
+      default:
+        return descriptions.slice(0, -1).join(", ") + ", or " + descriptions[descriptions.length - 1];
+    }
+  }
+  function describeFound(found2) {
+    return found2 ? '"' + literalEscape(found2) + '"' : "end of input";
+  }
+  return "Expected " + describeExpected(expected) + " but " + describeFound(found) + " found.";
+};
+function peg$parse(input, options) {
+  options = options !== void 0 ? options : {};
+  var peg$FAILED = {};
+  var peg$source = options.grammarSource;
+  var peg$startRuleFunctions = { main: peg$parsemain };
+  var peg$startRuleFunction = peg$parsemain;
+  var peg$c0 = "@";
+  var peg$c1 = "{";
+  var peg$c2 = ",";
+  var peg$c3 = "=";
+  var peg$c4 = "\\}";
+  var peg$c5 = "\\{";
+  var peg$c6 = "}";
+  var peg$c7 = "%";
+  var peg$r0 = /^[^ {]/;
+  var peg$r1 = /^[^ ,]/;
+  var peg$r2 = /^[^= ]/;
+  var peg$r3 = /^[^\n]/;
+  var peg$r4 = /^[\n]/;
+  var peg$r5 = /^[ \n\t]/;
+  var peg$r6 = /^[ \t]/;
+  var peg$e0 = peg$literalExpectation("@", false);
+  var peg$e1 = peg$classExpectation([" ", "{"], true, false);
+  var peg$e2 = peg$literalExpectation("{", false);
+  var peg$e3 = peg$classExpectation([" ", ","], true, false);
+  var peg$e4 = peg$literalExpectation(",", false);
+  var peg$e5 = peg$classExpectation(["=", " "], true, false);
+  var peg$e6 = peg$literalExpectation("=", false);
+  var peg$e7 = peg$literalExpectation("\\}", false);
+  var peg$e8 = peg$literalExpectation("\\{", false);
+  var peg$e9 = peg$literalExpectation("}", false);
+  var peg$e10 = peg$anyExpectation();
+  var peg$e11 = peg$literalExpectation("%", false);
+  var peg$e12 = peg$classExpectation(["\n"], true, false);
+  var peg$e13 = peg$classExpectation(["\n"], false, false);
+  var peg$e14 = peg$classExpectation([" ", "\n", "	"], false, false);
+  var peg$e15 = peg$classExpectation([" ", "	"], false, false);
+  var peg$f0 = function() {
+    return null;
+  };
+  var peg$f1 = function(type, citekey, f) {
+    const entries = f.reduce((acc, current) => {
+      acc[current[0]] = current[1];
+      return acc;
+    }, {});
+    return { type, entries };
+  };
+  var peg$f2 = function() {
+    return null;
+  };
+  var peg$f3 = function(t) {
+    return "<<" + t + ">>";
+  };
+  var peg$currPos = options.peg$currPos | 0;
+  var peg$savedPos = peg$currPos;
+  var peg$posDetailsCache = [{ line: 1, column: 1 }];
+  var peg$maxFailPos = peg$currPos;
+  var peg$maxFailExpected = options.peg$maxFailExpected || [];
+  var peg$silentFails = options.peg$silentFails | 0;
+  var peg$result;
+  if (options.startRule) {
+    if (!(options.startRule in peg$startRuleFunctions)) {
+      throw new Error(`Can't start parsing from rule "` + options.startRule + '".');
+    }
+    peg$startRuleFunction = peg$startRuleFunctions[options.startRule];
+  }
+  function text() {
+    return input.substring(peg$savedPos, peg$currPos);
+  }
+  function offset() {
+    return peg$savedPos;
+  }
+  function range() {
+    return {
+      source: peg$source,
+      start: peg$savedPos,
+      end: peg$currPos
+    };
+  }
+  function location() {
+    return peg$computeLocation(peg$savedPos, peg$currPos);
+  }
+  function expected(description, location2) {
+    location2 = location2 !== void 0 ? location2 : peg$computeLocation(peg$savedPos, peg$currPos);
+    throw peg$buildStructuredError(
+      [peg$otherExpectation(description)],
+      input.substring(peg$savedPos, peg$currPos),
+      location2
+    );
+  }
+  function error(message, location2) {
+    location2 = location2 !== void 0 ? location2 : peg$computeLocation(peg$savedPos, peg$currPos);
+    throw peg$buildSimpleError(message, location2);
+  }
+  function peg$literalExpectation(text2, ignoreCase) {
+    return { type: "literal", text: text2, ignoreCase };
+  }
+  function peg$classExpectation(parts, inverted, ignoreCase) {
+    return { type: "class", parts, inverted, ignoreCase };
+  }
+  function peg$anyExpectation() {
+    return { type: "any" };
+  }
+  function peg$endExpectation() {
+    return { type: "end" };
+  }
+  function peg$otherExpectation(description) {
+    return { type: "other", description };
+  }
+  function peg$computePosDetails(pos) {
+    var details = peg$posDetailsCache[pos];
+    var p;
+    if (details) {
+      return details;
+    } else {
+      if (pos >= peg$posDetailsCache.length) {
+        p = peg$posDetailsCache.length - 1;
+      } else {
+        p = pos;
+        while (!peg$posDetailsCache[--p]) {
+        }
+      }
+      details = peg$posDetailsCache[p];
+      details = {
+        line: details.line,
+        column: details.column
+      };
+      while (p < pos) {
+        if (input.charCodeAt(p) === 10) {
+          details.line++;
+          details.column = 1;
+        } else {
+          details.column++;
+        }
+        p++;
+      }
+      peg$posDetailsCache[pos] = details;
+      return details;
+    }
+  }
+  function peg$computeLocation(startPos, endPos, offset2) {
+    var startPosDetails = peg$computePosDetails(startPos);
+    var endPosDetails = peg$computePosDetails(endPos);
+    var res = {
+      source: peg$source,
+      start: {
+        offset: startPos,
+        line: startPosDetails.line,
+        column: startPosDetails.column
+      },
+      end: {
+        offset: endPos,
+        line: endPosDetails.line,
+        column: endPosDetails.column
+      }
+    };
+    if (offset2 && peg$source && typeof peg$source.offset === "function") {
+      res.start = peg$source.offset(res.start);
+      res.end = peg$source.offset(res.end);
+    }
+    return res;
+  }
+  function peg$fail(expected2) {
+    if (peg$currPos < peg$maxFailPos) {
+      return;
+    }
+    if (peg$currPos > peg$maxFailPos) {
+      peg$maxFailPos = peg$currPos;
+      peg$maxFailExpected = [];
+    }
+    peg$maxFailExpected.push(expected2);
+  }
+  function peg$buildSimpleError(message, location2) {
+    return new peg$SyntaxError(message, null, null, location2);
+  }
+  function peg$buildStructuredError(expected2, found, location2) {
+    return new peg$SyntaxError(
+      peg$SyntaxError.buildMessage(expected2, found),
+      expected2,
+      found,
+      location2
+    );
+  }
+  function peg$parsemain() {
+    var s0, s1;
+    s0 = [];
+    s1 = peg$parseblock();
+    while (s1 !== peg$FAILED) {
+      s0.push(s1);
+      s1 = peg$parseblock();
+    }
+    return s0;
+  }
+  function peg$parseblock() {
+    var s0;
+    s0 = peg$parsebibentry();
+    if (s0 === peg$FAILED) {
+      s0 = peg$parsecomment();
+      if (s0 === peg$FAILED) {
+        s0 = peg$parseempty_lines();
+        if (s0 === peg$FAILED) {
+          s0 = peg$parseloose_line();
+        }
+      }
+    }
+    return s0;
+  }
+  function peg$parseempty_lines() {
+    var s0, s1, s2, s3;
+    s0 = peg$currPos;
+    s1 = peg$currPos;
+    s2 = [];
+    s3 = peg$parseempty_line();
+    if (s3 !== peg$FAILED) {
+      while (s3 !== peg$FAILED) {
+        s2.push(s3);
+        s3 = peg$parseempty_line();
+      }
+    } else {
+      s2 = peg$FAILED;
+    }
+    if (s2 !== peg$FAILED) {
+      s1 = input.substring(s1, peg$currPos);
+    } else {
+      s1 = s2;
+    }
+    if (s1 !== peg$FAILED) {
+      peg$savedPos = s0;
+      s1 = peg$f0();
+    }
+    s0 = s1;
+    return s0;
+  }
+  function peg$parsebibentry() {
+    var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10;
+    s0 = peg$currPos;
+    if (input.charCodeAt(peg$currPos) === 64) {
+      s1 = peg$c0;
+      peg$currPos++;
+    } else {
+      s1 = peg$FAILED;
+      if (peg$silentFails === 0) {
+        peg$fail(peg$e0);
+      }
+    }
+    if (s1 !== peg$FAILED) {
+      s2 = peg$currPos;
+      s3 = [];
+      s4 = input.charAt(peg$currPos);
+      if (peg$r0.test(s4)) {
+        peg$currPos++;
+      } else {
+        s4 = peg$FAILED;
+        if (peg$silentFails === 0) {
+          peg$fail(peg$e1);
+        }
+      }
+      while (s4 !== peg$FAILED) {
+        s3.push(s4);
+        s4 = input.charAt(peg$currPos);
+        if (peg$r0.test(s4)) {
+          peg$currPos++;
+        } else {
+          s4 = peg$FAILED;
+          if (peg$silentFails === 0) {
+            peg$fail(peg$e1);
+          }
+        }
+      }
+      s2 = input.substring(s2, peg$currPos);
+      s3 = peg$parseempty_chars();
+      if (input.charCodeAt(peg$currPos) === 123) {
+        s4 = peg$c1;
+        peg$currPos++;
+      } else {
+        s4 = peg$FAILED;
+        if (peg$silentFails === 0) {
+          peg$fail(peg$e2);
+        }
+      }
+      if (s4 !== peg$FAILED) {
+        s5 = peg$parseempty_chars();
+        s6 = peg$currPos;
+        s7 = [];
+        s8 = input.charAt(peg$currPos);
+        if (peg$r1.test(s8)) {
+          peg$currPos++;
+        } else {
+          s8 = peg$FAILED;
+          if (peg$silentFails === 0) {
+            peg$fail(peg$e3);
+          }
+        }
+        if (s8 !== peg$FAILED) {
+          while (s8 !== peg$FAILED) {
+            s7.push(s8);
+            s8 = input.charAt(peg$currPos);
+            if (peg$r1.test(s8)) {
+              peg$currPos++;
+            } else {
+              s8 = peg$FAILED;
+              if (peg$silentFails === 0) {
+                peg$fail(peg$e3);
+              }
+            }
+          }
+        } else {
+          s7 = peg$FAILED;
+        }
+        if (s7 !== peg$FAILED) {
+          s6 = input.substring(s6, peg$currPos);
+        } else {
+          s6 = s7;
+        }
+        if (s6 !== peg$FAILED) {
+          s7 = peg$parseempty_chars();
+          if (input.charCodeAt(peg$currPos) === 44) {
+            s8 = peg$c2;
+            peg$currPos++;
+          } else {
+            s8 = peg$FAILED;
+            if (peg$silentFails === 0) {
+              peg$fail(peg$e4);
+            }
+          }
+          if (s8 !== peg$FAILED) {
+            s9 = peg$parseempty_chars();
+            s10 = peg$parsefields();
+            peg$savedPos = s0;
+            s0 = peg$f1(s2, s6, s10);
+          } else {
+            peg$currPos = s0;
+            s0 = peg$FAILED;
+          }
+        } else {
+          peg$currPos = s0;
+          s0 = peg$FAILED;
+        }
+      } else {
+        peg$currPos = s0;
+        s0 = peg$FAILED;
+      }
+    } else {
+      peg$currPos = s0;
+      s0 = peg$FAILED;
+    }
+    return s0;
+  }
+  function peg$parsefields() {
+    var s0, s1, s2, s3;
+    s0 = peg$currPos;
+    s1 = [];
+    s2 = peg$parsefield();
+    while (s2 !== peg$FAILED) {
+      s1.push(s2);
+      s2 = peg$currPos;
+      s3 = peg$parsedelimiter();
+      if (s3 !== peg$FAILED) {
+        s3 = peg$parsefield();
+        if (s3 === peg$FAILED) {
+          peg$currPos = s2;
+          s2 = peg$FAILED;
+        } else {
+          s2 = s3;
+        }
+      } else {
+        s2 = s3;
+      }
+    }
+    s2 = peg$parsedelimiter();
+    if (s2 === peg$FAILED) {
+      s2 = null;
+    }
+    s0 = s1;
+    return s0;
+  }
+  function peg$parsefield() {
+    var s0, s1, s2, s3, s4, s5, s6, s7;
+    s0 = peg$currPos;
+    s1 = peg$parseempty_chars();
+    s2 = peg$currPos;
+    s3 = [];
+    s4 = input.charAt(peg$currPos);
+    if (peg$r2.test(s4)) {
+      peg$currPos++;
+    } else {
+      s4 = peg$FAILED;
+      if (peg$silentFails === 0) {
+        peg$fail(peg$e5);
+      }
+    }
+    if (s4 !== peg$FAILED) {
+      while (s4 !== peg$FAILED) {
+        s3.push(s4);
+        s4 = input.charAt(peg$currPos);
+        if (peg$r2.test(s4)) {
+          peg$currPos++;
+        } else {
+          s4 = peg$FAILED;
+          if (peg$silentFails === 0) {
+            peg$fail(peg$e5);
+          }
+        }
+      }
+    } else {
+      s3 = peg$FAILED;
+    }
+    if (s3 !== peg$FAILED) {
+      s2 = input.substring(s2, peg$currPos);
+    } else {
+      s2 = s3;
+    }
+    if (s2 !== peg$FAILED) {
+      s3 = peg$parseempty_chars();
+      if (input.charCodeAt(peg$currPos) === 61) {
+        s4 = peg$c3;
+        peg$currPos++;
+      } else {
+        s4 = peg$FAILED;
+        if (peg$silentFails === 0) {
+          peg$fail(peg$e6);
+        }
+      }
+      if (s4 !== peg$FAILED) {
+        s5 = peg$parseempty_chars();
+        s6 = peg$parsecurly_brackets();
+        if (s6 !== peg$FAILED) {
+          s7 = peg$parseempty_chars();
+          s0 = [s2, s6];
+        } else {
+          peg$currPos = s0;
+          s0 = peg$FAILED;
+        }
+      } else {
+        peg$currPos = s0;
+        s0 = peg$FAILED;
+      }
+    } else {
+      peg$currPos = s0;
+      s0 = peg$FAILED;
+    }
+    return s0;
+  }
+  function peg$parsedelimiter() {
+    var s0, s1, s2, s3;
+    s0 = peg$currPos;
+    s1 = peg$parseempty_chars();
+    if (input.charCodeAt(peg$currPos) === 44) {
+      s2 = peg$c2;
+      peg$currPos++;
+    } else {
+      s2 = peg$FAILED;
+      if (peg$silentFails === 0) {
+        peg$fail(peg$e4);
+      }
+    }
+    if (s2 !== peg$FAILED) {
+      s3 = peg$parseempty_chars();
+      s1 = [s1, s2, s3];
+      s0 = s1;
+    } else {
+      peg$currPos = s0;
+      s0 = peg$FAILED;
+    }
+    return s0;
+  }
+  function peg$parsecurly_brackets() {
+    var s0, s1, s2, s3, s4, s5, s6;
+    s0 = peg$currPos;
+    if (input.charCodeAt(peg$currPos) === 123) {
+      s1 = peg$c1;
+      peg$currPos++;
+    } else {
+      s1 = peg$FAILED;
+      if (peg$silentFails === 0) {
+        peg$fail(peg$e2);
+      }
+    }
+    if (s1 !== peg$FAILED) {
+      s2 = peg$currPos;
+      s3 = [];
+      if (input.substr(peg$currPos, 2) === peg$c4) {
+        s4 = peg$c4;
+        peg$currPos += 2;
+      } else {
+        s4 = peg$FAILED;
+        if (peg$silentFails === 0) {
+          peg$fail(peg$e7);
+        }
+      }
+      if (s4 === peg$FAILED) {
+        if (input.substr(peg$currPos, 2) === peg$c5) {
+          s4 = peg$c5;
+          peg$currPos += 2;
+        } else {
+          s4 = peg$FAILED;
+          if (peg$silentFails === 0) {
+            peg$fail(peg$e8);
+          }
+        }
+        if (s4 === peg$FAILED) {
+          s4 = peg$parsecurly_brackets();
+          if (s4 === peg$FAILED) {
+            s4 = peg$currPos;
+            s5 = peg$currPos;
+            peg$silentFails++;
+            if (input.charCodeAt(peg$currPos) === 125) {
+              s6 = peg$c6;
+              peg$currPos++;
+            } else {
+              s6 = peg$FAILED;
+              if (peg$silentFails === 0) {
+                peg$fail(peg$e9);
+              }
+            }
+            peg$silentFails--;
+            if (s6 === peg$FAILED) {
+              s5 = void 0;
+            } else {
+              peg$currPos = s5;
+              s5 = peg$FAILED;
+            }
+            if (s5 !== peg$FAILED) {
+              if (input.length > peg$currPos) {
+                s6 = input.charAt(peg$currPos);
+                peg$currPos++;
+              } else {
+                s6 = peg$FAILED;
+                if (peg$silentFails === 0) {
+                  peg$fail(peg$e10);
+                }
+              }
+              if (s6 !== peg$FAILED) {
+                s5 = [s5, s6];
+                s4 = s5;
+              } else {
+                peg$currPos = s4;
+                s4 = peg$FAILED;
+              }
+            } else {
+              peg$currPos = s4;
+              s4 = peg$FAILED;
+            }
+          }
+        }
+      }
+      while (s4 !== peg$FAILED) {
+        s3.push(s4);
+        if (input.substr(peg$currPos, 2) === peg$c4) {
+          s4 = peg$c4;
+          peg$currPos += 2;
+        } else {
+          s4 = peg$FAILED;
+          if (peg$silentFails === 0) {
+            peg$fail(peg$e7);
+          }
+        }
+        if (s4 === peg$FAILED) {
+          if (input.substr(peg$currPos, 2) === peg$c5) {
+            s4 = peg$c5;
+            peg$currPos += 2;
+          } else {
+            s4 = peg$FAILED;
+            if (peg$silentFails === 0) {
+              peg$fail(peg$e8);
+            }
+          }
+          if (s4 === peg$FAILED) {
+            s4 = peg$parsecurly_brackets();
+            if (s4 === peg$FAILED) {
+              s4 = peg$currPos;
+              s5 = peg$currPos;
+              peg$silentFails++;
+              if (input.charCodeAt(peg$currPos) === 125) {
+                s6 = peg$c6;
+                peg$currPos++;
+              } else {
+                s6 = peg$FAILED;
+                if (peg$silentFails === 0) {
+                  peg$fail(peg$e9);
+                }
+              }
+              peg$silentFails--;
+              if (s6 === peg$FAILED) {
+                s5 = void 0;
+              } else {
+                peg$currPos = s5;
+                s5 = peg$FAILED;
+              }
+              if (s5 !== peg$FAILED) {
+                if (input.length > peg$currPos) {
+                  s6 = input.charAt(peg$currPos);
+                  peg$currPos++;
+                } else {
+                  s6 = peg$FAILED;
+                  if (peg$silentFails === 0) {
+                    peg$fail(peg$e10);
+                  }
+                }
+                if (s6 !== peg$FAILED) {
+                  s5 = [s5, s6];
+                  s4 = s5;
+                } else {
+                  peg$currPos = s4;
+                  s4 = peg$FAILED;
+                }
+              } else {
+                peg$currPos = s4;
+                s4 = peg$FAILED;
+              }
+            }
+          }
+        }
+      }
+      s2 = input.substring(s2, peg$currPos);
+      if (input.charCodeAt(peg$currPos) === 125) {
+        s3 = peg$c6;
+        peg$currPos++;
+      } else {
+        s3 = peg$FAILED;
+        if (peg$silentFails === 0) {
+          peg$fail(peg$e9);
+        }
+      }
+      if (s3 !== peg$FAILED) {
+        s0 = s2;
+      } else {
+        peg$currPos = s0;
+        s0 = peg$FAILED;
+      }
+    } else {
+      peg$currPos = s0;
+      s0 = peg$FAILED;
+    }
+    return s0;
+  }
+  function peg$parsecomment() {
+    var s0, s1, s2, s3, s4, s5;
+    s0 = peg$currPos;
+    s1 = peg$currPos;
+    s2 = peg$currPos;
+    s3 = [];
+    s4 = peg$parse_();
+    while (s4 !== peg$FAILED) {
+      s3.push(s4);
+      s4 = peg$parse_();
+    }
+    if (input.charCodeAt(peg$currPos) === 37) {
+      s4 = peg$c7;
+      peg$currPos++;
+    } else {
+      s4 = peg$FAILED;
+      if (peg$silentFails === 0) {
+        peg$fail(peg$e11);
+      }
+    }
+    if (s4 !== peg$FAILED) {
+      s5 = peg$parseloose_line();
+      if (s5 !== peg$FAILED) {
+        s3 = [s3, s4, s5];
+        s2 = s3;
+      } else {
+        peg$currPos = s2;
+        s2 = peg$FAILED;
+      }
+    } else {
+      peg$currPos = s2;
+      s2 = peg$FAILED;
+    }
+    if (s2 !== peg$FAILED) {
+      s1 = input.substring(s1, peg$currPos);
+    } else {
+      s1 = s2;
+    }
+    if (s1 !== peg$FAILED) {
+      peg$savedPos = s0;
+      s1 = peg$f2();
+    }
+    s0 = s1;
+    return s0;
+  }
+  function peg$parseloose_line() {
+    var s0, s1, s2, s3, s4;
+    s0 = peg$currPos;
+    s1 = peg$currPos;
+    s2 = peg$currPos;
+    s3 = [];
+    s4 = input.charAt(peg$currPos);
+    if (peg$r3.test(s4)) {
+      peg$currPos++;
+    } else {
+      s4 = peg$FAILED;
+      if (peg$silentFails === 0) {
+        peg$fail(peg$e12);
+      }
+    }
+    while (s4 !== peg$FAILED) {
+      s3.push(s4);
+      s4 = input.charAt(peg$currPos);
+      if (peg$r3.test(s4)) {
+        peg$currPos++;
+      } else {
+        s4 = peg$FAILED;
+        if (peg$silentFails === 0) {
+          peg$fail(peg$e12);
+        }
+      }
+    }
+    s4 = peg$parsenewline();
+    if (s4 !== peg$FAILED) {
+      s3 = [s3, s4];
+      s2 = s3;
+    } else {
+      peg$currPos = s2;
+      s2 = peg$FAILED;
+    }
+    if (s2 !== peg$FAILED) {
+      s1 = input.substring(s1, peg$currPos);
+    } else {
+      s1 = s2;
+    }
+    if (s1 !== peg$FAILED) {
+      peg$savedPos = s0;
+      s1 = peg$f3(s1);
+    }
+    s0 = s1;
+    return s0;
+  }
+  function peg$parsenot_newline() {
+    var s0, s1;
+    s0 = [];
+    s1 = input.charAt(peg$currPos);
+    if (peg$r3.test(s1)) {
+      peg$currPos++;
+    } else {
+      s1 = peg$FAILED;
+      if (peg$silentFails === 0) {
+        peg$fail(peg$e12);
+      }
+    }
+    if (s1 !== peg$FAILED) {
+      while (s1 !== peg$FAILED) {
+        s0.push(s1);
+        s1 = input.charAt(peg$currPos);
+        if (peg$r3.test(s1)) {
+          peg$currPos++;
+        } else {
+          s1 = peg$FAILED;
+          if (peg$silentFails === 0) {
+            peg$fail(peg$e12);
+          }
+        }
+      }
+    } else {
+      s0 = peg$FAILED;
+    }
+    return s0;
+  }
+  function peg$parsenewline() {
+    var s0;
+    s0 = input.charAt(peg$currPos);
+    if (peg$r4.test(s0)) {
+      peg$currPos++;
+    } else {
+      s0 = peg$FAILED;
+      if (peg$silentFails === 0) {
+        peg$fail(peg$e13);
+      }
+    }
+    return s0;
+  }
+  function peg$parseempty_line() {
+    var s0, s1, s2, s3;
+    s0 = peg$currPos;
+    s1 = peg$currPos;
+    s2 = [];
+    s3 = peg$parse_();
+    while (s3 !== peg$FAILED) {
+      s2.push(s3);
+      s3 = peg$parse_();
+    }
+    s3 = input.charAt(peg$currPos);
+    if (peg$r4.test(s3)) {
+      peg$currPos++;
+    } else {
+      s3 = peg$FAILED;
+      if (peg$silentFails === 0) {
+        peg$fail(peg$e13);
+      }
+    }
+    if (s3 !== peg$FAILED) {
+      s2 = [s2, s3];
+      s1 = s2;
+    } else {
+      peg$currPos = s1;
+      s1 = peg$FAILED;
+    }
+    if (s1 !== peg$FAILED) {
+      s0 = input.substring(s0, peg$currPos);
+    } else {
+      s0 = s1;
+    }
+    return s0;
+  }
+  function peg$parseempty_chars() {
+    var s0, s1, s2;
+    s0 = peg$currPos;
+    s1 = [];
+    s2 = input.charAt(peg$currPos);
+    if (peg$r5.test(s2)) {
+      peg$currPos++;
+    } else {
+      s2 = peg$FAILED;
+      if (peg$silentFails === 0) {
+        peg$fail(peg$e14);
+      }
+    }
+    while (s2 !== peg$FAILED) {
+      s1.push(s2);
+      s2 = input.charAt(peg$currPos);
+      if (peg$r5.test(s2)) {
+        peg$currPos++;
+      } else {
+        s2 = peg$FAILED;
+        if (peg$silentFails === 0) {
+          peg$fail(peg$e14);
+        }
+      }
+    }
+    s0 = input.substring(s0, peg$currPos);
+    return s0;
+  }
+  function peg$parsespacer() {
+    var s0, s1, s2, s3, s4;
+    s0 = peg$currPos;
+    s1 = peg$currPos;
+    s2 = peg$parseempty_chars();
+    if (input.charCodeAt(peg$currPos) === 44) {
+      s3 = peg$c2;
+      peg$currPos++;
+    } else {
+      s3 = peg$FAILED;
+      if (peg$silentFails === 0) {
+        peg$fail(peg$e4);
+      }
+    }
+    if (s3 !== peg$FAILED) {
+      s4 = peg$parseempty_chars();
+      s2 = [s2, s3, s4];
+      s1 = s2;
+    } else {
+      peg$currPos = s1;
+      s1 = peg$FAILED;
+    }
+    if (s1 !== peg$FAILED) {
+      s0 = input.substring(s0, peg$currPos);
+    } else {
+      s0 = s1;
+    }
+    return s0;
+  }
+  function peg$parse_() {
+    var s0;
+    s0 = input.charAt(peg$currPos);
+    if (peg$r6.test(s0)) {
+      peg$currPos++;
+    } else {
+      s0 = peg$FAILED;
+      if (peg$silentFails === 0) {
+        peg$fail(peg$e15);
+      }
+    }
+    return s0;
+  }
+  peg$result = peg$startRuleFunction();
+  if (options.peg$library) {
+    return (
+      /** @type {any} */
+      {
+        peg$result,
+        peg$currPos,
+        peg$FAILED,
+        peg$maxFailExpected,
+        peg$maxFailPos
+      }
+    );
+  }
+  if (peg$result !== peg$FAILED && peg$currPos === input.length) {
+    return peg$result;
+  } else {
+    if (peg$result !== peg$FAILED && peg$currPos < input.length) {
+      peg$fail(peg$endExpectation());
+    }
+    throw peg$buildStructuredError(
+      peg$maxFailExpected,
+      peg$maxFailPos < input.length ? input.charAt(peg$maxFailPos) : null,
+      peg$maxFailPos < input.length ? peg$computeLocation(peg$maxFailPos, peg$maxFailPos + 1) : peg$computeLocation(peg$maxFailPos, peg$maxFailPos)
+    );
+  }
+}
+
+// src/main.ts
 var DEFAULT_SETTINGS = {
   mySetting: "default"
 };
@@ -89,18 +1116,54 @@ var BibtexIntegration = class extends import_obsidian.Plugin {
       }
     });
     this.addSettingTab(new SampleSettingTab(this.app, this));
-    this.registerDomEvent(document, "click", (evt) => {
-      console.log("click", evt);
-    });
     this.registerInterval(window.setInterval(() => console.log("setInterval"), 5 * 60 * 1e3));
-    console.log("FINISHED LOADING");
-    window.setTimeout(async () => {
-      console.log("STARTING");
-      this.parseBibtex();
-      console.log("FINISHED");
-    }, 1e3);
+    const workerCode = `
+            self.onmessage = function(event) {
+                console.log('Message received in worker:', event.data.length);
+                self.postMessage('Worker processed the data');
+            };
+        `;
+    const blob = new Blob([workerCode], { type: "application/javascript" });
+    const workerUrl = URL.createObjectURL(blob);
+    try {
+      this.worker = new Worker(workerUrl);
+      this.worker.onerror = (error) => {
+        console.error("Failed to load the worker. Error:");
+        console.log(error);
+      };
+      this.worker.onmessage = async (event) => {
+        let data;
+        const t0 = Date.now();
+        try {
+          data = await import_fs.promises.readFile(path.join("/Users/andrea/Documents/Papers library", "Andrea's references.bib"), "utf8");
+        } catch (err) {
+          console.error("Error reading file:", err);
+          throw err;
+        }
+        const t1 = Date.now();
+        console.log("Bibtex file loaded in " + (t1 - t0) + " milliseconds.");
+        const t2 = Date.now();
+        const parsedData = peg$parse(data);
+        const t3 = Date.now();
+        console.log("Bibtex file parsed in " + (t3 - t2) + " milliseconds:", parsedData.length);
+      };
+    } catch (error) {
+      console.error("Error creating worker:", error);
+    }
+    this.addCommand({
+      id: "parse-bibtex",
+      name: "Parse BibTeX File",
+      callback: async () => {
+        if (this.worker) {
+          this.worker.postMessage({});
+        }
+      }
+    });
   }
   onunload() {
+    if (this.worker) {
+      this.worker.terminate();
+    }
   }
   async parseBibtex() {
     const t0 = Date.now();
@@ -108,16 +1171,9 @@ var BibtexIntegration = class extends import_obsidian.Plugin {
     const t1 = Date.now();
     console.log("Bibtex file loaded in " + (t1 - t0) + " milliseconds.");
     const t2 = Date.now();
-    this.worker = new Worker("path/to/parserWorker.js");
-    this.worker.postMessage(data);
-    this.worker.onmessage = (event) => {
-      const result = event.data;
-      const t3 = Date.now();
-      console.log("Bibtex file parsed in " + (t3 - t2) + " milliseconds.");
-    };
-    this.worker.onerror = (error) => {
-      console.error("Worker error:", error);
-    };
+    const parsedData = peg$parse(data);
+    const t3 = Date.now();
+    console.log("Bibtex file parsed in " + (t3 - t2) + " milliseconds:", parsedData.length);
   }
   // Function to read the .bib file and return its contents
   async readBibFile() {
@@ -163,4 +1219,3 @@ var SampleSettingTab = class extends import_obsidian.PluginSettingTab {
     }));
   }
 };
-//# sourceMappingURL=data:application/json;base64,ewogICJ2ZXJzaW9uIjogMywKICAic291cmNlcyI6IFsiLi4vc3JjL21haW4udHMiXSwKICAic291cmNlc0NvbnRlbnQiOiBbIi8vIG1haW4udHNcblxuaW1wb3J0IHsgQXBwLCBFZGl0b3IsIE1hcmtkb3duRmlsZUluZm8sIE1hcmtkb3duVmlldywgTW9kYWwsIE5vdGljZSwgUGx1Z2luLCBQbHVnaW5TZXR0aW5nVGFiLCBTZXR0aW5nIH0gZnJvbSAnb2JzaWRpYW4nO1xuaW1wb3J0IHsgcHJvbWlzZXMgYXMgZnMgfSBmcm9tICdmcyc7XG5pbXBvcnQgKiBhcyBwYXRoIGZyb20gJ3BhdGgnO1xuXG5pbXBvcnQge3BhcnNlfSBmcm9tIFwiLi9wZWdneS5tanNcIlxuXG5pbnRlcmZhY2UgQmlidGV4SW50ZWdyYXRpb25TZXR0aW5ncyB7XG4gICAgbXlTZXR0aW5nOiBzdHJpbmc7XG59XG5cbmNvbnN0IERFRkFVTFRfU0VUVElOR1M6IEJpYnRleEludGVncmF0aW9uU2V0dGluZ3MgPSB7XG4gICAgbXlTZXR0aW5nOiAnZGVmYXVsdCdcbn1cblxuZXhwb3J0IGRlZmF1bHQgY2xhc3MgQmlidGV4SW50ZWdyYXRpb24gZXh0ZW5kcyBQbHVnaW4ge1xuICAgIHNldHRpbmdzOiBCaWJ0ZXhJbnRlZ3JhdGlvblNldHRpbmdzID0gREVGQVVMVF9TRVRUSU5HUztcblxuICAgIHByaXZhdGUgZmlsZVBhdGggPSBwYXRoLmpvaW4oXCIvVXNlcnMvYW5kcmVhL0RvY3VtZW50cy9QYXBlcnMgbGlicmFyeVwiLCBcIkFuZHJlYSdzIHJlZmVyZW5jZXMuYmliXCIpO1xuICAgIHdvcmtlcjogV29ya2VyIHwgbnVsbCA9IG51bGw7XG5cbiAgICBhc3luYyBvbmxvYWQoKSB7XG4gICAgICAgIGF3YWl0IHRoaXMubG9hZFNldHRpbmdzKCk7XG5cbiAgICAgICAgLy8gVGhpcyBjcmVhdGVzIGFuIGljb24gaW4gdGhlIGxlZnQgcmliYm9uLlxuICAgICAgICBjb25zdCByaWJib25JY29uRWwgPSB0aGlzLmFkZFJpYmJvbkljb24oJ2RpY2UnLCAnU2FtcGxlIFBsdWdpbicsIChldnQ6IE1vdXNlRXZlbnQpID0+IHtcbiAgICAgICAgICAgIC8vIENhbGxlZCB3aGVuIHRoZSB1c2VyIGNsaWNrcyB0aGUgaWNvbi5cbiAgICAgICAgICAgIG5ldyBOb3RpY2UoJ1RoaXMgaXMgYSBub3RpY2UhJyk7XG4gICAgICAgIH0pO1xuICAgICAgICAvLyBQZXJmb3JtIGFkZGl0aW9uYWwgdGhpbmdzIHdpdGggdGhlIHJpYmJvblxuICAgICAgICByaWJib25JY29uRWwuYWRkQ2xhc3MoJ215LXBsdWdpbi1yaWJib24tY2xhc3MnKTtcblxuICAgICAgICAvLyBUaGlzIGFkZHMgYSBzdGF0dXMgYmFyIGl0ZW0gdG8gdGhlIGJvdHRvbSBvZiB0aGUgYXBwLiBEb2VzIG5vdCB3b3JrIG9uIG1vYmlsZSBhcHBzLlxuICAgICAgICBjb25zdCBzdGF0dXNCYXJJdGVtRWwgPSB0aGlzLmFkZFN0YXR1c0Jhckl0ZW0oKTtcbiAgICAgICAgc3RhdHVzQmFySXRlbUVsLnNldFRleHQoJ1N0YXR1cyBCYXIgVGV4dCcpO1xuXG4gICAgICAgIC8vIFRoaXMgYWRkcyBhIHNpbXBsZSBjb21tYW5kIHRoYXQgY2FuIGJlIHRyaWdnZXJlZCBhbnl3aGVyZVxuICAgICAgICB0aGlzLmFkZENvbW1hbmQoe1xuICAgICAgICAgICAgaWQ6ICdvcGVuLXNhbXBsZS1tb2RhbC1zaW1wbGUnLFxuICAgICAgICAgICAgbmFtZTogJ09wZW4gc2FtcGxlIG1vZGFsIChzaW1wbGUpJyxcbiAgICAgICAgICAgIGNhbGxiYWNrOiAoKSA9PiB7XG4gICAgICAgICAgICAgICAgbmV3IFNhbXBsZU1vZGFsKHRoaXMuYXBwKS5vcGVuKCk7XG4gICAgICAgICAgICB9XG4gICAgICAgIH0pO1xuICAgICAgICAvLyBUaGlzIGFkZHMgYW4gZWRpdG9yIGNvbW1hbmQgdGhhdCBjYW4gcGVyZm9ybSBzb21lIG9wZXJhdGlvbiBvbiB0aGUgY3VycmVudCBlZGl0b3IgaW5zdGFuY2VcbiAgICAgICAgdGhpcy5hZGRDb21tYW5kKHtcbiAgICAgICAgICAgIGlkOiAnc2FtcGxlLWVkaXRvci1jb21tYW5kJyxcbiAgICAgICAgICAgIG5hbWU6ICdTYW1wbGUgZWRpdG9yIGNvbW1hbmQnLFxuICAgICAgICAgICAgZWRpdG9yQ2FsbGJhY2s6IChlZGl0b3I6IEVkaXRvciwgdmlldzogTWFya2Rvd25WaWV3IHwgTWFya2Rvd25GaWxlSW5mbyk6IGFueSA9PiB7XG4gICAgICAgICAgICAgICAgY29uc29sZS5sb2coZWRpdG9yLmdldFNlbGVjdGlvbigpKTtcbiAgICAgICAgICAgICAgICBlZGl0b3IucmVwbGFjZVNlbGVjdGlvbignU2FtcGxlIEVkaXRvciBDb21tYW5kJyk7XG4gICAgICAgICAgICB9XG4gICAgICAgIH0pO1xuICAgICAgICAvLyBUaGlzIGFkZHMgYSBjb21wbGV4IGNvbW1hbmQgdGhhdCBjYW4gY2hlY2sgd2hldGhlciB0aGUgY3VycmVudCBzdGF0ZSBvZiB0aGUgYXBwIGFsbG93cyBleGVjdXRpb24gb2YgdGhlIGNvbW1hbmRcbiAgICAgICAgdGhpcy5hZGRDb21tYW5kKHtcbiAgICAgICAgICAgIGlkOiAnb3Blbi1zYW1wbGUtbW9kYWwtY29tcGxleCcsXG4gICAgICAgICAgICBuYW1lOiAnT3BlbiBzYW1wbGUgbW9kYWwgKGNvbXBsZXgpJyxcbiAgICAgICAgICAgIGNoZWNrQ2FsbGJhY2s6IChjaGVja2luZzogYm9vbGVhbikgPT4ge1xuICAgICAgICAgICAgICAgIC8vIENvbmRpdGlvbnMgdG8gY2hlY2tcbiAgICAgICAgICAgICAgICBjb25zdCBtYXJrZG93blZpZXcgPSB0aGlzLmFwcC53b3Jrc3BhY2UuZ2V0QWN0aXZlVmlld09mVHlwZShNYXJrZG93blZpZXcpO1xuICAgICAgICAgICAgICAgIGlmIChtYXJrZG93blZpZXcpIHtcbiAgICAgICAgICAgICAgICAgICAgLy8gSWYgY2hlY2tpbmcgaXMgdHJ1ZSwgd2UncmUgc2ltcGx5IFwiY2hlY2tpbmdcIiBpZiB0aGUgY29tbWFuZCBjYW4gYmUgcnVuLlxuICAgICAgICAgICAgICAgICAgICAvLyBJZiBjaGVja2luZyBpcyBmYWxzZSwgdGhlbiB3ZSB3YW50IHRvIGFjdHVhbGx5IHBlcmZvcm0gdGhlIG9wZXJhdGlvbi5cbiAgICAgICAgICAgICAgICAgICAgaWYgKCFjaGVja2luZykge1xuICAgICAgICAgICAgICAgICAgICAgICAgbmV3IFNhbXBsZU1vZGFsKHRoaXMuYXBwKS5vcGVuKCk7XG4gICAgICAgICAgICAgICAgICAgIH1cblxuICAgICAgICAgICAgICAgICAgICAvLyBUaGlzIGNvbW1hbmQgd2lsbCBvbmx5IHNob3cgdXAgaW4gQ29tbWFuZCBQYWxldHRlIHdoZW4gdGhlIGNoZWNrIGZ1bmN0aW9uIHJldHVybnMgdHJ1ZVxuICAgICAgICAgICAgICAgICAgICByZXR1cm4gdHJ1ZTtcbiAgICAgICAgICAgICAgICB9XG4gICAgICAgICAgICB9XG4gICAgICAgIH0pO1xuXG4gICAgICAgIC8vIFRoaXMgYWRkcyBhIHNldHRpbmdzIHRhYiBzbyB0aGUgdXNlciBjYW4gY29uZmlndXJlIHZhcmlvdXMgYXNwZWN0cyBvZiB0aGUgcGx1Z2luXG4gICAgICAgIHRoaXMuYWRkU2V0dGluZ1RhYihuZXcgU2FtcGxlU2V0dGluZ1RhYih0aGlzLmFwcCwgdGhpcykpO1xuXG4gICAgICAgIC8vIElmIHRoZSBwbHVnaW4gaG9va3MgdXAgYW55IGdsb2JhbCBET00gZXZlbnRzIChvbiBwYXJ0cyBvZiB0aGUgYXBwIHRoYXQgZG9lc24ndCBiZWxvbmcgdG8gdGhpcyBwbHVnaW4pXG4gICAgICAgIC8vIFVzaW5nIHRoaXMgZnVuY3Rpb24gd2lsbCBhdXRvbWF0aWNhbGx5IHJlbW92ZSB0aGUgZXZlbnQgbGlzdGVuZXIgd2hlbiB0aGlzIHBsdWdpbiBpcyBkaXNhYmxlZC5cbiAgICAgICAgdGhpcy5yZWdpc3RlckRvbUV2ZW50KGRvY3VtZW50LCAnY2xpY2snLCAoZXZ0OiBNb3VzZUV2ZW50KSA9PiB7XG4gICAgICAgICAgICBjb25zb2xlLmxvZygnY2xpY2snLCBldnQpO1xuICAgICAgICB9KTtcblxuICAgICAgICAvLyBXaGVuIHJlZ2lzdGVyaW5nIGludGVydmFscywgdGhpcyBmdW5jdGlvbiB3aWxsIGF1dG9tYXRpY2FsbHkgY2xlYXIgdGhlIGludGVydmFsIHdoZW4gdGhlIHBsdWdpbiBpcyBkaXNhYmxlZC5cbiAgICAgICAgdGhpcy5yZWdpc3RlckludGVydmFsKHdpbmRvdy5zZXRJbnRlcnZhbCgoKSA9PiBjb25zb2xlLmxvZygnc2V0SW50ZXJ2YWwnKSwgNSAqIDYwICogMTAwMCkpO1xuXG4gICAgICAgIGNvbnNvbGUubG9nKFwiRklOSVNIRUQgTE9BRElOR1wiKTtcbiAgICAgICAgd2luZG93LnNldFRpbWVvdXQoYXN5bmMgKCkgPT4ge1xuICAgICAgICAgICAgY29uc29sZS5sb2coJ1NUQVJUSU5HJyk7XG4gICAgICAgICAgICB0aGlzLnBhcnNlQmlidGV4KCk7XG4gICAgICAgICAgICBjb25zb2xlLmxvZygnRklOSVNIRUQnKTtcbiAgICAgICAgfSwgMTAwMCk7XG4gICAgfVxuXG4gICAgb251bmxvYWQoKSB7XG5cbiAgICB9XG5cbiAgICBhc3luYyBwYXJzZUJpYnRleCgpIHtcbiAgICAgICAgY29uc3QgdDAgPSBEYXRlLm5vdygpO1xuICAgICAgICBjb25zdCBkYXRhID0gYXdhaXQgdGhpcy5yZWFkQmliRmlsZSgpO1xuICAgICAgICBjb25zdCB0MSA9IERhdGUubm93KCk7XG4gICAgICAgIGNvbnNvbGUubG9nKFwiQmlidGV4IGZpbGUgbG9hZGVkIGluIFwiICsgKHQxIC0gdDApICsgXCIgbWlsbGlzZWNvbmRzLlwiKTtcblxuICAgICAgICBjb25zdCB0MiA9IERhdGUubm93KCk7XG5cbiAgICAgICAgLy8gQ3JlYXRlIGEgbmV3IHdvcmtlclxuICAgICAgICB0aGlzLndvcmtlciA9IG5ldyBXb3JrZXIoJ3BhdGgvdG8vcGFyc2VyV29ya2VyLmpzJyk7XG4gICAgICAgIFxuICAgICAgICAvLyBQb3N0IHRoZSBkYXRhIHRvIHRoZSB3b3JrZXIgZm9yIHBhcnNpbmdcbiAgICAgICAgdGhpcy53b3JrZXIucG9zdE1lc3NhZ2UoZGF0YSk7XG5cbiAgICAgICAgLy8gTGlzdGVuIGZvciB0aGUgcmVzdWx0IGZyb20gdGhlIHdvcmtlclxuICAgICAgICB0aGlzLndvcmtlci5vbm1lc3NhZ2UgPSAoZXZlbnQpID0+IHtcbiAgICAgICAgICAgIGNvbnN0IHJlc3VsdCA9IGV2ZW50LmRhdGE7ICAvLyBQYXJzZWQgcmVzdWx0XG4gICAgICAgICAgICBjb25zdCB0MyA9IERhdGUubm93KCk7XG4gICAgICAgICAgICBjb25zb2xlLmxvZyhcIkJpYnRleCBmaWxlIHBhcnNlZCBpbiBcIiArICh0MyAtIHQyKSArIFwiIG1pbGxpc2Vjb25kcy5cIik7XG4gICAgICAgICAgICBcbiAgICAgICAgICAgIC8vIEhhbmRsZSB0aGUgcGFyc2VkIHJlc3VsdCBoZXJlLCBlLmcuLCB1cGRhdGluZyB0aGUgVUlcbiAgICAgICAgfTtcblxuICAgICAgICB0aGlzLndvcmtlci5vbmVycm9yID0gKGVycm9yKSA9PiB7XG4gICAgICAgICAgICBjb25zb2xlLmVycm9yKFwiV29ya2VyIGVycm9yOlwiLCBlcnJvcik7XG4gICAgICAgIH07XG4gICAgfVxuXG5cbiAgICAvLyBGdW5jdGlvbiB0byByZWFkIHRoZSAuYmliIGZpbGUgYW5kIHJldHVybiBpdHMgY29udGVudHNcbiAgICBhc3luYyByZWFkQmliRmlsZSgpOiBQcm9taXNlPHN0cmluZz4ge1xuICAgICAgdHJ5IHtcbiAgICAgICAgY29uc3QgZGF0YSA9IGF3YWl0IGZzLnJlYWRGaWxlKHRoaXMuZmlsZVBhdGgsICd1dGY4Jyk7XG4gICAgICAgIHJldHVybiBkYXRhO1xuICAgICAgfSBjYXRjaCAoZXJyKSB7XG4gICAgICAgIGNvbnNvbGUuZXJyb3IoXCJFcnJvciByZWFkaW5nIGZpbGU6XCIsIGVycik7XG4gICAgICAgIHRocm93IGVycjsgIC8vIFJldGhyb3cgdGhlIGVycm9yIHNvIHRoZSBjYWxsZXIga25vd3Mgc29tZXRoaW5nIHdlbnQgd3JvbmdcbiAgICAgIH1cbiAgICB9XG5cbiAgICBhc3luYyBsb2FkU2V0dGluZ3MoKSB7XG4gICAgICAgIHRoaXMuc2V0dGluZ3MgPSBPYmplY3QuYXNzaWduKHt9LCBERUZBVUxUX1NFVFRJTkdTLCBhd2FpdCB0aGlzLmxvYWREYXRhKCkpO1xuICAgIH1cblxuICAgIGFzeW5jIHNhdmVTZXR0aW5ncygpIHtcbiAgICAgICAgYXdhaXQgdGhpcy5zYXZlRGF0YSh0aGlzLnNldHRpbmdzKTtcbiAgICB9XG59XG5cbmNsYXNzIFNhbXBsZU1vZGFsIGV4dGVuZHMgTW9kYWwge1xuICAgIGNvbnN0cnVjdG9yKGFwcDogQXBwKSB7XG4gICAgICAgIHN1cGVyKGFwcCk7XG4gICAgfVxuXG4gICAgb25PcGVuKCkge1xuICAgICAgICBjb25zdCB7Y29udGVudEVsfSA9IHRoaXM7XG4gICAgICAgIGNvbnRlbnRFbC5zZXRUZXh0KCdXb2FoIScpO1xuICAgIH1cblxuICAgIG9uQ2xvc2UoKSB7XG4gICAgICAgIGNvbnN0IHtjb250ZW50RWx9ID0gdGhpcztcbiAgICAgICAgY29udGVudEVsLmVtcHR5KCk7XG4gICAgfVxufVxuXG5jbGFzcyBTYW1wbGVTZXR0aW5nVGFiIGV4dGVuZHMgUGx1Z2luU2V0dGluZ1RhYiB7XG4gICAgcGx1Z2luOiBCaWJ0ZXhJbnRlZ3JhdGlvbjtcblxuICAgIGNvbnN0cnVjdG9yKGFwcDogQXBwLCBwbHVnaW46IEJpYnRleEludGVncmF0aW9uKSB7XG4gICAgICAgIHN1cGVyKGFwcCwgcGx1Z2luKTtcbiAgICAgICAgdGhpcy5wbHVnaW4gPSBwbHVnaW47XG4gICAgfVxuXG4gICAgZGlzcGxheSgpOiB2b2lkIHtcbiAgICAgICAgY29uc3Qge2NvbnRhaW5lckVsfSA9IHRoaXM7XG5cbiAgICAgICAgY29udGFpbmVyRWwuZW1wdHkoKTtcblxuICAgICAgICBuZXcgU2V0dGluZyhjb250YWluZXJFbClcbiAgICAgICAgICAgIC5zZXROYW1lKCdTZXR0aW5nICMxJylcbiAgICAgICAgICAgIC5zZXREZXNjKCdJdFxcJ3MgYSBzZWNyZXQnKVxuICAgICAgICAgICAgLmFkZFRleHQodGV4dCA9PiB0ZXh0XG4gICAgICAgICAgICAgICAgLnNldFBsYWNlaG9sZGVyKCdFbnRlciB5b3VyIHNlY3JldCcpXG4gICAgICAgICAgICAgICAgLnNldFZhbHVlKHRoaXMucGx1Z2luLnNldHRpbmdzLm15U2V0dGluZylcbiAgICAgICAgICAgICAgICAub25DaGFuZ2UoYXN5bmMgKHZhbHVlKSA9PiB7XG4gICAgICAgICAgICAgICAgICAgIHRoaXMucGx1Z2luLnNldHRpbmdzLm15U2V0dGluZyA9IHZhbHVlO1xuICAgICAgICAgICAgICAgICAgICBhd2FpdCB0aGlzLnBsdWdpbi5zYXZlU2V0dGluZ3MoKTtcbiAgICAgICAgICAgICAgICB9KSk7XG4gICAgfVxufSJdLAogICJtYXBwaW5ncyI6ICI7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7OztBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFFQSxzQkFBOEc7QUFDOUcsZ0JBQStCO0FBQy9CLFdBQXNCO0FBUXRCLElBQU0sbUJBQThDO0FBQUEsRUFDaEQsV0FBVztBQUNmO0FBRUEsSUFBcUIsb0JBQXJCLGNBQStDLHVCQUFPO0FBQUEsRUFBdEQ7QUFBQTtBQUNJLG9CQUFzQztBQUV0QyxTQUFRLFdBQWdCLFVBQUssMENBQTBDLHlCQUF5QjtBQUNoRyxrQkFBd0I7QUFBQTtBQUFBLEVBRXhCLE1BQU0sU0FBUztBQUNYLFVBQU0sS0FBSyxhQUFhO0FBR3hCLFVBQU0sZUFBZSxLQUFLLGNBQWMsUUFBUSxpQkFBaUIsQ0FBQyxRQUFvQjtBQUVsRixVQUFJLHVCQUFPLG1CQUFtQjtBQUFBLElBQ2xDLENBQUM7QUFFRCxpQkFBYSxTQUFTLHdCQUF3QjtBQUc5QyxVQUFNLGtCQUFrQixLQUFLLGlCQUFpQjtBQUM5QyxvQkFBZ0IsUUFBUSxpQkFBaUI7QUFHekMsU0FBSyxXQUFXO0FBQUEsTUFDWixJQUFJO0FBQUEs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

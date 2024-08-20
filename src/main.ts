@@ -75,27 +75,72 @@ export default class BibtexIntegration extends Plugin {
         // This adds a settings tab so the user can configure various aspects of the plugin
         this.addSettingTab(new SampleSettingTab(this.app, this));
 
-        // If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-        // Using this function will automatically remove the event listener when this plugin is disabled.
-        this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-            console.log('click', evt);
-        });
-
         // When registering intervals, this function will automatically clear the interval when the plugin is disabled.
         this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
 
-        console.log("FINISHED LOADING");
-        window.setTimeout(async () => {
-            console.log('STARTING');
-            this.parseBibtex();
-            console.log('FINISHED');
-        }, 1000);
+         // Define the worker's code as a string
+        const workerCode = `
+            self.onmessage = function(event) {
+                console.log('Message received in worker:', event.data.length);
+                self.postMessage('Worker processed the data');
+            };
+        `;
+
+        // Create a Blob URL from the worker code
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        const workerUrl = URL.createObjectURL(blob);
+
+        try {
+            // Create and initialize the Web Worker from the Blob URL
+            this.worker = new Worker(workerUrl);
+            
+            // Check for any errors when loading the worker
+            this.worker.onerror = (error) => {
+                console.error("Failed to load the worker. Error:");
+                console.log(error);
+            };
+            
+            // Confirm successful communication with the worker
+            this.worker.onmessage = async (event) => {
+                let data;
+                const t0 = Date.now();
+                try {
+                    data = await fs.readFile(path.join("/Users/andrea/Documents/Papers library", "Andrea's references.bib"), 'utf8');
+                } catch (err) {
+                    console.error("Error reading file:", err);
+                    throw err;  // Rethrow the error so the caller knows something went wrong
+                }
+                const t1 = Date.now();
+                console.log("Bibtex file loaded in " + (t1 - t0) + " milliseconds.");
+
+                const t2 = Date.now();
+                const parsedData = parse(data);
+                const t3 = Date.now();
+                console.log("Bibtex file parsed in " + (t3 - t2) + " milliseconds:", parsedData.length);
+            };
+
+        } catch (error) {
+            console.error("Error creating worker:", error);        
+        }
+    
+        // For example, triggering the worker when a command is run:
+        this.addCommand({
+            id: 'parse-bibtex',
+            name: 'Parse BibTeX File',
+            callback: async () => {
+                if(this.worker) {
+                    this.worker.postMessage({});    
+                }                
+            }
+        });
     }
 
     onunload() {
-
+        if (this.worker) {
+            this.worker.terminate();  // Clean up the worker when unloading
+        }
     }
-
+    
     async parseBibtex() {
         const t0 = Date.now();
         const data = await this.readBibFile();
@@ -103,25 +148,9 @@ export default class BibtexIntegration extends Plugin {
         console.log("Bibtex file loaded in " + (t1 - t0) + " milliseconds.");
 
         const t2 = Date.now();
-
-        // Create a new worker
-        this.worker = new Worker('path/to/parserWorker.js');
-        
-        // Post the data to the worker for parsing
-        this.worker.postMessage(data);
-
-        // Listen for the result from the worker
-        this.worker.onmessage = (event) => {
-            const result = event.data;  // Parsed result
-            const t3 = Date.now();
-            console.log("Bibtex file parsed in " + (t3 - t2) + " milliseconds.");
-            
-            // Handle the parsed result here, e.g., updating the UI
-        };
-
-        this.worker.onerror = (error) => {
-            console.error("Worker error:", error);
-        };
+        const parsedData = parse(data);
+        const t3 = Date.now();
+        console.log("Bibtex file parsed in " + (t3 - t2) + " milliseconds:", parsedData.length);
     }
 
 
