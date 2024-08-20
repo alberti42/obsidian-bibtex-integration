@@ -67,7 +67,7 @@ export default class BibtexIntegration extends Plugin {
             name: 'Get BibTeX entry',
             callback: async () => {
                 if(this.bibtexParser) {
-                    const bibEntry = this.bibtexParser.bibEntries['Gibble:2024'];
+                    const bibEntry = this.bibtexParser.getBibEntry('Gibble:2024')
                     if(bibEntry) {
                         console.log(await resolveBookmark(this.bookmark_resolver_path,bibEntry,'bdsk-file-1'));
                     }                

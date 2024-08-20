@@ -2,7 +2,7 @@
 
 import * as fs from 'fs';
 import {parse} from "./peggy.mjs"
-import { BibTeXDict, MaxMatchesReachedError } from 'types';
+import { BibTeXDict, BibTeXEntry, MaxMatchesReachedError } from 'types';
 
 const parserDebug = true;
 
@@ -14,7 +14,7 @@ export class BibtexParser {
     }
 
     async parseBibtex() {
-        let bibtexData;
+        let bibtexData: string;
         try {
             const t0 = Date.now();
             bibtexData = await this.readBibFile();
@@ -69,6 +69,10 @@ export class BibtexParser {
 
         // Start processing the first chunk
         requestIdleCallback(processNextChunk);
+    }
+
+    getBibEntry(citekey:string): BibTeXEntry {
+        return this.bibEntries[citekey];
     }
 
     // Function to read the .bib file and return its contents
