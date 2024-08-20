@@ -1,6 +1,6 @@
 // main.ts
 
-import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, FileSystemAdapter, Modal, Notice, Plugin, PluginManifest, PluginSettingTab, Setting } from 'obsidian';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';  // Import the os module to get the system temp directory
@@ -8,11 +8,7 @@ import * as bplist from 'bplist-parser';
 
 import {parse} from "./peggy.mjs"
 
-import { exec } from 'child_process';
-
-import { promisify } from 'util';
-
-const execPromise = promisify(exec);
+import { spawn, exec } from 'child_process';
 
 const bookmark_resolver_script = `use framework "Foundation"
 use scripting additions
@@ -131,19 +127,17 @@ async function processBinaryPlist(binaryData: Uint8Array): Promise<unknown> {
 // Function to write the binary data to a temporary file
 async function writeTempFile(data: Uint8Array): Promise<string> {
     const tempDir = os.tmpdir();  // Get the system temporary directory
-    let tempFilePath = path.join(tempDir, `temp_alias_${Date.now()}`);
+    const tempFilePath = path.join(tempDir, `temp_alias_${Date.now()}`);
     console.log(tempFilePath);
-    tempFilePath = '/Users/andrea/Downloads/aliases/tmp.bookmark';
-
     await fs.promises.writeFile(tempFilePath, Buffer.from(data));
     return tempFilePath;
 }
 
 
 // Function to resolve bookmark using the Swift command-line tool
-function resolveBookmarkWithTool(bookmarkPath: string): Promise<string> {
+function resolveBookmarkWithTool(bookmark_resolver_path: string, bookmarkPath: string): Promise<string> {
     return new Promise((resolve, reject) => {
-        exec(`/Users/andrea/bin/bookmark_resolver "${bookmarkPath}"`, (error, stdout, stderr) => {
+        exec(`${bookmark_resolver_path} "${bookmarkPath}"`, (error, stdout, stderr) => {
             if (error) {
                 reject(`Error resolving bookmark: ${error}`);
             } else {
@@ -152,6 +146,44 @@ function resolveBookmarkWithTool(bookmarkPath: string): Promise<string> {
         });
     });
 }
+
+
+// Function to resolve bookmark using the Swift command-line tool with Base64 piping
+function resolveBookmark(bookmark_resolver_path: string, base64Bookmark: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        // Spawn the child process with the -p option
+        const child = spawn(bookmark_resolver_path, ['-p'], { stdio: ['pipe', 'pipe', 'pipe'] });
+
+        let stdout = '';
+        let stderr = '';
+
+        // Collect stdout data
+        child.stdout.on('data', (data) => {
+            stdout += data.toString();
+        });
+
+        // Collect stderr data
+        child.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+
+        // Handle process exit
+        child.on('close', (code) => {
+            if (code !== 0 || stderr) {
+                reject(`Error resolving bookmark: ${stderr || 'Unknown error'}`);
+            } else {
+                resolve(stdout.trim());
+            }
+        });
+
+        // Write the Base64 bookmark to stdin
+        if (child.stdin) {
+            child.stdin.write(base64Bookmark);
+            child.stdin.end(); // Signal that we are done writing to stdin
+        }
+    });
+}
+
 
 async function resolveBookmarkWithOsascript(base64Bookmark: string): Promise<string> {
     try {
@@ -181,7 +213,7 @@ function isBookmark(obj:unknown): obj is Bookmark {
 }
 
 // Main function
-async function processAlias(bibEntry: BibTeXEntry) {
+async function processAlias(bookmark_resolver_path:string, bibEntry: BibTeXEntry) {
     try {
         // Convert Base64 to binary data
         const binaryData = base64ToUint8Array(bibEntry['bdsk-file-1']);
@@ -190,10 +222,12 @@ async function processAlias(bibEntry: BibTeXEntry) {
         
         if(plistData) {
             if(isBookmark(plistData)) {
-                const aliasData = bufferToUint8Array(plistData.bookmark);
 
-                // console.log(await resolveBookmarkWithTool(await writeTempFile(aliasData)));
-                console.log("Result:",await resolveBookmarkWithOsascript(uint8ArrayToBase64(aliasData)));
+                // console.log(uint8ArrayToBase64(plistData.bookmark));
+                // const aliasData = bufferToUint8Array(plistData.bookmark);
+
+                console.log(await resolveBookmark(bookmark_resolver_path, uint8ArrayToBase64(plistData.bookmark)));
+                // console.log("Result:",await resolveBookmarkWithOsascript(uint8ArrayToBase64(aliasData)));
             }
             
         }
@@ -210,6 +244,30 @@ export default class BibtexIntegration extends Plugin {
     private filePath = path.join("/Users/andrea/Documents/Papers library", "test.bib");
     private data = "";
     private bibEntries: BibTeXDict = {};
+    private vaultPath: string;
+    private pluginsPath: string;
+    private pluginPath: string;
+    private bookmark_resolver_path: string;
+
+    constructor(app:App,manifest:PluginManifest) {
+        super(app,manifest);
+        const adapter = this.app.vault.adapter;
+        if (!(adapter instanceof FileSystemAdapter)) {
+            throw new Error("The vault folder could not be determined.");
+        }
+
+        // Path to vault
+        this.vaultPath = adapter.getBasePath();
+
+        // Path to plugins folder
+        this.pluginsPath = path.join(this.vaultPath,app.plugins.getPluginFolder());
+
+        // Path to this plugin folder in the vault
+        this.pluginPath = path.join(this.pluginsPath,manifest.id);
+
+        // Path to the bookmark resolver utility
+        this.bookmark_resolver_path = path.join(this.pluginPath,"bookmark_resolver");
+    }
     
     async onload() {
         await this.loadSettings();
@@ -257,7 +315,7 @@ export default class BibtexIntegration extends Plugin {
             callback: async () => {
                 const bibEntry = this.bibEntries['Gibble:2024'];
                 if(bibEntry) {
-                    processAlias(bibEntry);
+                    processAlias(this.bookmark_resolver_path,bibEntry);
                 }                
             }
         });

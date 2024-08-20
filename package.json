@@ -8,7 +8,7 @@
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"grammar": "peggy --format es src/grammar.pegjs -o src/peggy.mjs",
-        "bookmark_resolver": "swiftc -o bookmark_resolver/bookmark_resolver bookmark_resolver/bookmark_resolver.swift"
+		"bookmark_resolver": "swiftc -o dist/bookmark_resolver bookmark_resolver/bookmark_resolver.swift"
 	},
 	"keywords": [],
 	"author": "",
