@@ -1,10 +1,40 @@
 // main.ts
 
-import { App, Editor, MarkdownFileInfo, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { promises as fs } from 'fs';
 import * as path from 'path';
-
+import { replaceTscAliasPaths } from 'tsc-alias';
 import {parse} from "./peggy.mjs"
+
+interface Location {
+    start: Position;
+    end: Position;
+}
+
+interface Position {
+    offset: number;
+    line: number;
+    column: number;
+}
+
+interface BibTeXDict {
+    [key: string]: BibTeXEntry;   // The fields within the entry (e.g., "author", "title", "year", etc.)
+}
+
+interface BibTeXEntry {
+    [key: string]: string;   // The fields within the entry (e.g., "author", "title", "year", etc.)
+}
+
+class MaxMatchesReachedError extends Error {
+    location: Location;
+
+    constructor(message: string, location: Location) {
+        super(message);
+        this.name = "MaxMatchesReachedError";
+        this.location = location;  // Store the location where parsing stopped
+    }
+}
+
 
 interface BibtexIntegrationSettings {
     mySetting: string;
@@ -14,12 +44,24 @@ const DEFAULT_SETTINGS: BibtexIntegrationSettings = {
     mySetting: 'default'
 }
 
+function base64ToUint8Array(base64: string): Uint8Array {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+}
+
+
 export default class BibtexIntegration extends Plugin {
     settings: BibtexIntegrationSettings = DEFAULT_SETTINGS;
 
-    private filePath = path.join("/Users/andrea/Documents/Papers library", "Andrea's references.bib");
-    worker: Worker | null = null;
-
+    private filePath = path.join("/Users/andrea/Documents/Papers library", "test.bib");
+    private data = "";
+    private bibEntries: BibTeXDict = {};
+    
     async onload() {
         await this.loadSettings();
 
@@ -43,114 +85,106 @@ export default class BibtexIntegration extends Plugin {
                 new SampleModal(this.app).open();
             }
         });
-        // This adds an editor command that can perform some operation on the current editor instance
-        this.addCommand({
-            id: 'sample-editor-command',
-            name: 'Sample editor command',
-            editorCallback: (editor: Editor, view: MarkdownView | MarkdownFileInfo): any => {
-                console.log(editor.getSelection());
-                editor.replaceSelection('Sample Editor Command');
-            }
-        });
-        // This adds a complex command that can check whether the current state of the app allows execution of the command
-        this.addCommand({
-            id: 'open-sample-modal-complex',
-            name: 'Open sample modal (complex)',
-            checkCallback: (checking: boolean) => {
-                // Conditions to check
-                const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-                if (markdownView) {
-                    // If checking is true, we're simply "checking" if the command can be run.
-                    // If checking is false, then we want to actually perform the operation.
-                    if (!checking) {
-                        new SampleModal(this.app).open();
-                    }
-
-                    // This command will only show up in Command Palette when the check function returns true
-                    return true;
-                }
-            }
-        });
-
+        
         // This adds a settings tab so the user can configure various aspects of the plugin
         this.addSettingTab(new SampleSettingTab(this.app, this));
 
         // When registering intervals, this function will automatically clear the interval when the plugin is disabled.
         this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
 
-         // Define the worker's code as a string
-        const workerCode = `
-            self.onmessage = function(event) {
-                console.log('Message received in worker:', event.data.length);
-                self.postMessage('Worker processed the data');
-            };
-        `;
-
-        // Create a Blob URL from the worker code
-        const blob = new Blob([workerCode], { type: 'application/javascript' });
-        const workerUrl = URL.createObjectURL(blob);
-
-        try {
-            // Create and initialize the Web Worker from the Blob URL
-            this.worker = new Worker(workerUrl);
-            
-            // Check for any errors when loading the worker
-            this.worker.onerror = (error) => {
-                console.error("Failed to load the worker. Error:");
-                console.log(error);
-            };
-            
-            // Confirm successful communication with the worker
-            this.worker.onmessage = async (event) => {
-                let data;
-                const t0 = Date.now();
-                try {
-                    data = await fs.readFile(path.join("/Users/andrea/Documents/Papers library", "Andrea's references.bib"), 'utf8');
-                } catch (err) {
-                    console.error("Error reading file:", err);
-                    throw err;  // Rethrow the error so the caller knows something went wrong
-                }
-                const t1 = Date.now();
-                console.log("Bibtex file loaded in " + (t1 - t0) + " milliseconds.");
-
-                const t2 = Date.now();
-                const parsedData = parse(data);
-                const t3 = Date.now();
-                console.log("Bibtex file parsed in " + (t3 - t2) + " milliseconds:", parsedData.length);
-            };
-
-        } catch (error) {
-            console.error("Error creating worker:", error);        
-        }
-    
         // For example, triggering the worker when a command is run:
         this.addCommand({
             id: 'parse-bibtex',
-            name: 'Parse BibTeX File',
+            name: 'Parse BibTeX file',
             callback: async () => {
-                if(this.worker) {
-                    this.worker.postMessage({});    
+                this.parseBibtex();
+            }
+        });
+
+        // For example, triggering the worker when a command is run:
+        this.addCommand({
+            id: 'get-bibtex-entry',
+            name: 'Get BibTeX entry',
+            callback: async () => {
+                const bibEntry = this.bibEntries['Gibble:2024'];
+                if(bibEntry) {
+                    console.log(base64ToUint8Array(bibEntry['bdsk-file-1']));
                 }                
             }
         });
+
+        this.parseBibtex();
     }
 
     onunload() {
-        if (this.worker) {
-            this.worker.terminate();  // Clean up the worker when unloading
-        }
+        
     }
     
     async parseBibtex() {
-        const t0 = Date.now();
-        const data = await this.readBibFile();
-        const t1 = Date.now();
-        console.log("Bibtex file loaded in " + (t1 - t0) + " milliseconds.");
+        if (this.data === "") {
+            const t0 = Date.now();
+            this.data = await this.readBibFile();
+            const t1 = Date.now();
+            console.log("Bibtex file loaded in " + (t1 - t0) + " milliseconds.");
+        }
 
+        const parsedData = {};
+        const maxMatches = 100;
+        let offset = 0;
+        let isParsingComplete = false;
+        
         const t2 = Date.now();
-        const parsedData = parse(data);
-        const t3 = Date.now();
-        console.log("Bibtex file parsed in " + (t3 - t2) + " milliseconds:", parsedData.length);
+
+        const processNextChunk = (deadline: IdleDeadline) => {
+            try {
+                while (deadline.timeRemaining() > 0 && !isParsingComplete) {
+                    // Slice the data to start parsing from the last known offset
+                    parse(this.data?.slice(offset), {
+                        MaxMatchesReachedError,
+                        parsedData,
+                        maxMatches
+                    });
+
+                    // If no error is thrown, parsing is complete
+                    isParsingComplete = true;
+                }
+
+                if (!isParsingComplete) {
+                    // If the parsing is not complete, request the next idle callback
+                    requestIdleCallback(processNextChunk);
+                } else {
+                    // Parsing finished
+                    const t3 = Date.now();
+                    console.log("Bibtex file parsed in " + (t3 - t2) + " milliseconds");
+                    console.log("All data processed:", Object.keys(parsedData).length);
+                    this.bibEntries = parsedData;
+                }
+            } catch (error) {
+                if (error instanceof MaxMatchesReachedError) {
+                    // Update the offset based on the location returned by the error
+                    offset += this.getOffsetFromLocation(error.location);
+
+                    // Request the next idle callback
+                    requestIdleCallback(processNextChunk);
+                } else {
+                    console.error("Parsing error:", error);
+                }
+            }
+        };
+
+        // Start processing the first chunk
+        requestIdleCallback(processNextChunk);
+    }
+
+
+
+    // Helper function to convert PeggyJS location to string offset
+    getOffsetFromLocation(location: Location): number {
+        if (!location) return 0;
+
+        // location contains start and end offsets in the input string
+        // Use the end offset to continue from where parsing stopped
+        return location.end.offset;
     }
 
 
