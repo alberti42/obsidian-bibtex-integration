@@ -169,7 +169,6 @@ export default class BibtexIntegration extends Plugin {
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
         set_debug_parser(this.settings.debug_parser);
-        console.log(debug_parser);
     }
 
     async saveSettings() {
