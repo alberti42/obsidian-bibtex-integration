@@ -7,9 +7,14 @@ import * as path from 'path';
 import { BibtexIntegrationSettings } from 'types';
 import { parseBdskUrl, posixToFileURL, resolveBookmark } from 'utils';
 
+import LoadWorker from 'web-worker:./worker';
+import { WorkerManager } from 'worker_manager';
+
 const DEFAULT_SETTINGS: BibtexIntegrationSettings = {
     bibtex_filepath: ''
 }
+
+const worker = new Worker('./worker.worker.js');  // Correct URL resolution
 
 export default class BibtexIntegration extends Plugin {
     settings: BibtexIntegrationSettings = DEFAULT_SETTINGS;
@@ -18,7 +23,11 @@ export default class BibtexIntegration extends Plugin {
     private pluginsPath: string;
     private pluginPath: string;
     private bookmark_resolver_path: string;
-    
+
+    private loadWorker = new WorkerManager(new LoadWorker(), {
+        blockingChannel: true,
+    });
+
     bibtexParser: BibtexParser | null = null;
 
     constructor(app:App,manifest:PluginManifest) {
@@ -42,6 +51,7 @@ export default class BibtexIntegration extends Plugin {
     }
     
     async onload() {
+        console.log(worker);
         await this.loadSettings();
 
         // This adds a settings tab so the user can configure various aspects of the plugin
@@ -77,6 +87,8 @@ export default class BibtexIntegration extends Plugin {
         });*/
         
         this.bibtexParser = new BibtexParser(this.settings.bibtex_filepath);
+
+        this.loadWorker.post({bibtexParser:this.bibtexParser});
 
         window.setTimeout(async () => {
             if(this.bibtexParser) {

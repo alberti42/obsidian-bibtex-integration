@@ -1,7 +1,5 @@
 // types.ts
 
-import { PluginManifest } from "obsidian";
-
 export interface Location {
     start: Position;
     end: Position;
