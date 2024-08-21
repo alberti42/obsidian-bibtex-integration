@@ -8,12 +8,18 @@ const parserDebug = true;
 
 export class BibtexParser {
     bibEntries: BibTeXDict | null = null;
+    private workInProgress = false;
     
     constructor(public bibtex_filePath:string, private maxMatches = 100) {
 
     }
 
     async parseBibtex() {
+        // FIXME Here we should wait with a promise that the parsing launched before has finished
+        if(this.workInProgress) { return; }
+        
+        this.workInProgress = true;
+
         let bibtexData: string;
         try {
             const t0 = Date.now();
@@ -30,9 +36,9 @@ export class BibtexParser {
         
         const t2 = Date.now();
 
-        const processNextChunk = (deadline: IdleDeadline) => {
+        const processNextChunk = () => { // deadline: IdleDeadline
             try {
-                while (deadline.timeRemaining() > 0 && !isParsingComplete) {
+                while (!isParsingComplete) { // deadline.timeRemaining() > 0 &&
                     // Slice the data to start parsing from the last known offset
                     parse(bibtexData?.slice(offset), {
                         MaxMatchesReachedError,
@@ -44,23 +50,22 @@ export class BibtexParser {
                     isParsingComplete = true;
                 }
 
-                if (!isParsingComplete) {
-                    // If the parsing is not complete, request the next idle callback
-                    requestIdleCallback(processNextChunk);
-                } else {
-                    // Parsing finished
-                    const t3 = Date.now();
-                    if(parserDebug) console.log("Bibtex file parsed in " + (t3 - t2) + " milliseconds");
-                    if(parserDebug) console.log(`Imported ${Object.keys(parsedData).length} entries`);
-                    this.bibEntries = parsedData;
-                }
+                // Parsing finished
+                const t3 = Date.now();
+                if(parserDebug) console.log("Bibtex file parsed in " + (t3 - t2) + " milliseconds");
+                if(parserDebug) console.log(`Imported ${Object.keys(parsedData).length} entries`);
+                this.bibEntries = parsedData;
+
             } catch (error) {
                 if (error instanceof MaxMatchesReachedError) {
                     // Update the offset based on the location returned by the error
                     offset += error.location.end.offset;
 
                     // Request the next idle callback
-                    requestIdleCallback(processNextChunk);
+                    // requestIdleCallback(processNextChunk);
+                    window.setTimeout(async () => {
+                        processNextChunk()
+                    }, 10);
                 } else {
                     console.error("Parsing error:", error);
                 }
@@ -68,7 +73,10 @@ export class BibtexParser {
         };
 
         // Start processing the first chunk
-        requestIdleCallback(processNextChunk);
+        // requestIdleCallback(processNextChunk);
+        processNextChunk();
+
+        this.workInProgress = false;
     }
 
     setBibtexFilepath(bibtex_filePath:string): void {
