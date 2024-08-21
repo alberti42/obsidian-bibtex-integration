@@ -107,7 +107,7 @@ export default class BibtexIntegration extends Plugin {
 
         watchFile(this.settings.bibtex_filepath,this);
         
-        const bibEntries = await this.bibtexParserWorker.post<ParserWorkerReply>(bibtexData);
+        const bibEntries = await this.bibtexParserWorker.post<ParserWorkerReply>({bibtexData, debug_parser: this.settings.debug_parser});
         if(bibEntries) {
             this.bibtexManager = new BibtexManager(bibEntries);
         } else {

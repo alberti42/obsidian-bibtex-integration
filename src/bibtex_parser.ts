@@ -1,9 +1,8 @@
 // bibtex_parser.ts
 
 import { parse } from "./peggy.mjs"
-import { BibTeXDict, MaxMatchesReachedError } from 'types';
+import { BibTeXDict, MaxMatchesReachedError, ParserWorkerInputs } from 'types';
 
-// FIXME: replace this with settings and updating the information on each call
 export let debug_parser = false;
 
 const maxMatches = 1000;
@@ -12,11 +11,14 @@ export function set_debug_parser(value:boolean) {
     debug_parser = value;
 }
 
-export async function parseBibtex(bibtexData:string): Promise<BibTeXDict | null> {
+export async function parseBibtex(msg:ParserWorkerInputs): Promise<BibTeXDict | null> {
     
     const parsedData: BibTeXDict | null = {};
     let offset = 0;
     let isParsingComplete = false;
+
+    const bibtexData = msg.bibtexData;
+    debug_parser = msg.debug_parser;
 
     const t2 = Date.now();
 

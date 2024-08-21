@@ -17,6 +17,11 @@ export interface BibTeXDict {
 
 export type ParserWorkerReply = BibTeXDict | null;
 
+export interface ParserWorkerInputs {
+    bibtexData: string;
+    debug_parser: boolean;
+}
+
 export interface BibTeXEntry {
     [key: string]: string;   // The fields within the entry (e.g., "author", "title", "year", etc.)
 }
