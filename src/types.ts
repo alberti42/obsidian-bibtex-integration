@@ -1,7 +1,5 @@
 // types.ts
 
-import { BibtexParser } from "bibtex_parser";
-
 export interface Location {
     start: Position;
     end: Position;
@@ -17,6 +15,8 @@ export interface BibTeXDict {
     [key: string]: BibTeXEntry;   // The fields within the entry (e.g., "author", "title", "year", etc.)
 }
 
+export type ParserWorkerReply = BibTeXDict | null;
+
 export interface BibTeXEntry {
     [key: string]: string;   // The fields within the entry (e.g., "author", "title", "year", etc.)
 }
@@ -29,11 +29,6 @@ export class MaxMatchesReachedError extends Error {
         this.name = "MaxMatchesReachedError";
         this.location = location;  // Store the location where parsing stopped
     }
-}
-
-export interface BibtexWorkerMsg {
-    cmd: string;
-    bibtex_filepath: string;
 }
 
 export interface BibtexIntegrationSettings {

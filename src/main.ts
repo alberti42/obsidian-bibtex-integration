@@ -2,13 +2,16 @@
 
 import { BibtexManager } from 'bibtex_manager';
 import { App, FileSystemAdapter, Plugin, PluginManifest, PluginSettingTab, Setting } from 'obsidian';
+
+import * as fs from 'fs';
 import * as path from 'path';
 
-import { BibtexIntegrationSettings } from 'types';
+import { BibtexIntegrationSettings, ParserWorkerReply } from 'types';
 import { parseBdskUrl, posixToFileURL, resolveBookmark } from 'utils';
 
 import LoadWorker from 'web-worker:./bibtex.worker';
 import { WorkerManager } from 'worker_manager';
+import { parserDebug } from 'bibtex_parser';
 
 const DEFAULT_SETTINGS: BibtexIntegrationSettings = {
     bibtex_filepath: ''
@@ -59,10 +62,7 @@ export default class BibtexIntegration extends Plugin {
             id: 'parse-bibtex',
             name: 'Parse BibTeX file',
             callback: async () => {
-                const bibEntries = await this.bibtexParserWorker.post({cmd: 'parse', bibtex_filepath: this.settings.bibtex_filepath});
-                console.log("ENTRIES");
-                console.log(bibEntries);
-                // this.bibtexManager = new BibtexManager(bibEntries);
+                this.parseBibtexFile();                
             }
         });
 
@@ -84,11 +84,44 @@ export default class BibtexIntegration extends Plugin {
             }
         });*/
 
-        this.bibtexParserWorker.post({cmd: 'parse', bibtex_filepath: this.settings.bibtex_filepath});
-        
+        this.parseBibtexFile();
+
          // Expose the method for external use
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (this.app.plugins.plugins[this.manifest.id] as any).getFilepathForCitekey = this.getUrlForCitekey.bind(this);
+    }
+
+    async parseBibtexFile() {
+        let bibtexData: string;
+        try {
+            const t0 = Date.now();
+            bibtexData = await this.readBibFile();
+            const t1 = Date.now();
+            if (parserDebug) console.log("Bibtex file loaded in " + (t1 - t0) + " milliseconds.");
+        } catch {
+            return;
+        }
+
+        const bibEntries = await this.bibtexParserWorker.post<ParserWorkerReply>(bibtexData);
+        if(bibEntries) {
+            this.bibtexManager = new BibtexManager(bibEntries);
+        } else {
+            this.bibtexManager = null;
+        }     
+    }
+
+    // Function to read the .bib file and return its contents
+    async readBibFile(): Promise < string > {
+        if (this.settings.bibtex_filepath.trim() === '') {
+            throw new Error("No bib file provided.")
+        }
+        try {
+            const data = await fs.promises.readFile(this.settings.bibtex_filepath, 'utf8');
+            return data;
+        } catch (err) {
+            console.error("Error reading file:", err);
+            throw err; // Rethrow the error so the caller knows something went wrong
+        }
     }
 
     // Public method to set citation key and trigger command
