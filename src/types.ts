@@ -35,6 +35,7 @@ export interface BibtexIntegrationSettings {
     bibtex_filepath: string;
     import_delay_ms: number;
     debug_parser: boolean;
+    widthRecentList: number;
 }
 
 export interface Bookmark {

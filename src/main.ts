@@ -12,12 +12,8 @@ import { parseBdskUrl, posixToFileURL, resolveBookmark, unwatchFile, watchFile }
 import LoadWorker from 'web-worker:./bibtex.worker';
 import { WorkerManager } from 'worker_manager';
 import { parserDebug } from 'bibtex_parser';
-
-const DEFAULT_SETTINGS: BibtexIntegrationSettings = {
-    bibtex_filepath: '',
-    import_delay_ms: 1000,
-    debug_parser: false,
-}
+import { CitekeyFuzzyModal } from 'citekeyFuzzyModal';
+import { DEFAULT_SETTINGS } from 'defaults';
 
 export default class BibtexIntegration extends Plugin {
     settings: BibtexIntegrationSettings = DEFAULT_SETTINGS;
@@ -68,6 +64,15 @@ export default class BibtexIntegration extends Plugin {
             }
         });
 
+        this.addCommand({
+            id: 'open-pdf-from-bibtex-entry',
+            name: 'Open PDF file of BibTex entry',
+            callback: () => {
+                this.showBibtexEntriesModal();
+            }
+        });
+
+
         if(this.settings.import_delay_ms>0) {
             setTimeout(() => {
                 this.parseBibtexFile();
@@ -79,6 +84,13 @@ export default class BibtexIntegration extends Plugin {
          // Expose the method for external use
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (this.app.plugins.plugins[this.manifest.id] as any).getFilepathForCitekey = this.getUrlForCitekey.bind(this);
+    }
+
+    async showBibtexEntriesModal() {
+        
+        const results = [{citekey: "Hello", test:"dsds"},{citekey: "World", test:"htghg"},{citekey: "Finished", test:"dfgf"}]
+        const modal = new CitekeyFuzzyModal(this.app, this, results);
+        modal.open();
     }
 
     async parseBibtexFile() {
