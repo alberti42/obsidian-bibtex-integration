@@ -14,8 +14,6 @@ const DEFAULT_SETTINGS: BibtexIntegrationSettings = {
     bibtex_filepath: ''
 }
 
-const worker = new Worker('./worker.worker.js');  // Correct URL resolution
-
 export default class BibtexIntegration extends Plugin {
     settings: BibtexIntegrationSettings = DEFAULT_SETTINGS;
 
@@ -51,7 +49,6 @@ export default class BibtexIntegration extends Plugin {
     }
     
     async onload() {
-        console.log(worker);
         await this.loadSettings();
 
         // This adds a settings tab so the user can configure various aspects of the plugin
@@ -88,7 +85,7 @@ export default class BibtexIntegration extends Plugin {
         
         this.bibtexParser = new BibtexParser(this.settings.bibtex_filepath);
 
-        this.loadWorker.post({bibtexParser:this.bibtexParser});
+        console.log(this.loadWorker.post({bibtexParser:this.bibtexParser}));
 
         window.setTimeout(async () => {
             if(this.bibtexParser) {

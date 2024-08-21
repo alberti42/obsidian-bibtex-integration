@@ -1,4 +1,4 @@
-// worker.worker.js
+// worker.ts
 
 import { BibtexParser } from 'bibtex_parser';
 import registerPromiseWorker from 'promise-worker/register';

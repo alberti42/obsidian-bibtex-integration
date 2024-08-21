@@ -1,18 +1,18 @@
 import typescript from '@rollup/plugin-typescript';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
-import json from '@rollup/plugin-json';
 import webWorkerLoader from 'rollup-plugin-web-worker-loader';
 import { terser } from 'rollup-plugin-terser';
+import copy from 'rollup-plugin-copy';  // Import the copy plugin
 
 const prod = process.env.NODE_ENV === 'production';
 
 export default {
   input: 'src/main.ts',
   output: {
-    dir: 'dist',  // Set a proper output directory
-    sourcemap: prod ? false : 'inline',  // Sourcemaps only in development
-    format: 'cjs',  // CommonJS for Obsidian
+    dir: 'dist',
+    sourcemap: prod ? false : 'inline',
+    format: 'cjs',
     exports: 'default',
   },
   external: ['obsidian', 'path', 'fs', 'util', 'events', 'stream', 'os'],
@@ -20,12 +20,19 @@ export default {
     typescript(),
     nodeResolve({ browser: true }),
     commonjs(),
-    json(),
     webWorkerLoader({
       targetPlatform: 'browser',
       extensions: ['.ts'],
-      sourcemap: !prod,  // Preserve source maps in development
+      sourcemap: !prod,
     }),
-    prod && terser(),  // Minify for production
-  ].filter(Boolean),  // Ensure no false values are in the plugins array
+    prod && terser(),
+    copy({
+      targets: [
+        { src: 'styles/styles.css', dest: 'dist/', rename: 'styles.css' },  // Copy file as dist/styles.css
+        { src: 'manifest.json', dest: 'dist/' },  // Copy manifest.json to dist folder
+      ],
+      copyOnce: true,
+      verbose: true,
+    }),
+  ].filter(Boolean),
 };
