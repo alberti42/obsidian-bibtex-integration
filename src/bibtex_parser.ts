@@ -32,7 +32,7 @@ export async function parseBibtex(bibtexData:string): Promise<BibTeXDict | null>
             // Parsing finished
             const t3 = Date.now();
             if (parserDebug) console.log("Bibtex file parsed in " + (t3 - t2) + " milliseconds");
-            if (parserDebug) console.log(`Imported ${Object.keys(parsedData).length} entries`);
+            if (parserDebug) console.log(`Imported ${Object.keys(parsedData).length} bibtex entries`);
             return parsedData;
 
         } catch (error) {
