@@ -1,4 +1,4 @@
-// utils.ts
+    // utils.ts
 
 import * as bplist from 'bplist-parser';
 import { spawn } from 'child_process';
@@ -7,6 +7,7 @@ import { BibTeXEntry, isBookmark } from 'types';
 import { pathToFileURL } from 'url';
 import * as chokidar from 'chokidar'; // to watch for file changes
 import BibtexIntegration from 'main';
+import { parserDebug } from 'bibtex_parser';
 
 let watcher: chokidar.FSWatcher | null = null;
 let watched_filepath: string | null = null;
@@ -147,7 +148,7 @@ export async function watchFile(filepath: string, plugin:BibtexIntegration) {
 
     // watch the same file already watched
     if(watched_filepath && watched_filepath === filepath) return;
-    
+
     if(watcher) {
         await watcher.close();
         watched_filepath = null;
@@ -172,7 +173,7 @@ export async function watchFile(filepath: string, plugin:BibtexIntegration) {
 
     watcher = chokidar.watch(filepath,watchOptions)
         .on('change', () => {
-            console.log(`The BibTex file ${watched_filepath} has changed and will be parsed agained.`)
+            if(parserDebug) console.log(`The BibTex file ${watched_filepath} has changed and will be parsed agained.`)
             plugin.parseBibtexFile();
         }
     );
