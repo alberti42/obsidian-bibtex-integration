@@ -5,6 +5,11 @@ import { spawn } from 'child_process';
 import * as path from 'path';
 import { BibTeXEntry, isBookmark } from 'types';
 import { pathToFileURL } from 'url';
+import * as chokidar from 'chokidar'; // to watch for file changes
+import BibtexIntegration from 'main';
+
+let watcher: chokidar.FSWatcher | null = null;
+let watched_filepath: string | null = null;
 
 export function parseBdskUrl(url: string): { citekey: string; doc: number } | null {
     // Regular expression to capture the citekey and the doc number
@@ -135,5 +140,49 @@ export async function resolveBookmark(bookmark_resolver_path:string, bibEntry: B
         console.error('Error:', error);
         return null;
     }
+}
+
+/* watch file changes */
+export async function watchFile(filepath: string, plugin:BibtexIntegration) {
+
+    // watch the same file already watched
+    if(watched_filepath && watched_filepath === filepath) return;
+    
+    if(watcher) {
+        await watcher.close();
+        watched_filepath = null;
+    }
+
+    // By default, the add event will fire when a file first appears on disk,
+    // before the entire file has been written. Furthermore, in some cases some
+    // change events will be emitted while the file is being written. In some cases,
+    // especially when watching for large files there will be a need to wait for the
+    // write operation to finish before responding to a file creation or modification.
+    // Setting awaitWriteFinish to true (or a truthy value) will poll file size,
+    // holding its add and change events until the size does not change for a configurable
+    // amount of time. The appropriate duration setting is heavily dependent on the OS and
+    // hardware. For accurate detection this parameter should be relatively high, making
+    // file watching much less responsive. Use with caution. 
+    const watchOptions = {
+        awaitWriteFinish: {
+            stabilityThreshold: 1000,
+            pollInterval: 100,
+        },
+    };
+
+    watcher = chokidar.watch(filepath,watchOptions)
+        .on('change', () => {
+            console.log(`The BibTex file ${watched_filepath} has changed and will be parsed agained.`)
+            plugin.parseBibtexFile();
+        }
+    );
+
+    watched_filepath = filepath;
+}
+
+export async function unwatchFile() {
+    if(watcher) {
+        await watcher.close();        
+    } 
 }
 

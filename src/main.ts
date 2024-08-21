@@ -7,7 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { BibtexIntegrationSettings, ParserWorkerReply } from 'types';
-import { parseBdskUrl, posixToFileURL, resolveBookmark } from 'utils';
+import { parseBdskUrl, posixToFileURL, resolveBookmark, unwatchFile, watchFile } from 'utils';
 
 import LoadWorker from 'web-worker:./bibtex.worker';
 import { WorkerManager } from 'worker_manager';
@@ -63,27 +63,9 @@ export default class BibtexIntegration extends Plugin {
             id: 'parse-bibtex',
             name: 'Parse BibTeX file',
             callback: async () => {
-                this.parseBibtexFile();                
+                this.parseBibtexFile();
             }
         });
-
-        /*// For example, triggering the worker when a command is run:
-        this.addCommand({
-            id: 'get-bibtex-entry',
-            name: 'Get BibTeX entry',
-            callback: async () => {
-                if(this.bibtexParser) {
-                    const bibEntry = this.bibtexParser.getBibEntry('Gibble:2024')
-                    if(bibEntry) {
-                        console.log(parseBdskUrl('x-bdsk://Gibble%3A2024?doc=2'));
-                        const filename = await resolveBookmark(this.bookmark_resolver_path,bibEntry,'bdsk-file-1');
-                        if(filename) {
-                            console.log(posixToFileURL(filename));
-                        }
-                    }                
-                }
-            }
-        });*/
 
         if(this.settings.import_delay_ms>0) {
             setTimeout(() => {
@@ -92,7 +74,7 @@ export default class BibtexIntegration extends Plugin {
         } else {
             this.parseBibtexFile();
         }
-
+                
          // Expose the method for external use
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (this.app.plugins.plugins[this.manifest.id] as any).getFilepathForCitekey = this.getUrlForCitekey.bind(this);
@@ -106,9 +88,12 @@ export default class BibtexIntegration extends Plugin {
             const t1 = Date.now();
             if (parserDebug) console.log("Bibtex file loaded in " + (t1 - t0) + " milliseconds.");
         } catch {
+            console.error(`Unexpected error when loading bibtex file ${this.settings.bibtex_filepath}`);
             return;
         }
 
+        watchFile(this.settings.bibtex_filepath,this);
+        
         const bibEntries = await this.bibtexParserWorker.post<ParserWorkerReply>(bibtexData);
         if(bibEntries) {
             this.bibtexManager = new BibtexManager(bibEntries);
@@ -165,7 +150,7 @@ export default class BibtexIntegration extends Plugin {
     }
 
     onunload() {
-        
+        unwatchFile();
     }
 
     async loadSettings() {
