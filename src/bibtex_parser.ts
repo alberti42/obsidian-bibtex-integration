@@ -2,24 +2,17 @@
 
 import * as fs from 'fs';
 import { parse } from "./peggy.mjs"
-import { BibTeXDict, BibTeXEntry, MaxMatchesReachedError } from 'types';
+import { BibTeXDict, MaxMatchesReachedError } from 'types';
 
 const parserDebug = true;
 
 export class BibtexParser {
-    bibEntries: BibTeXDict | null = null;
-    private workInProgress = false;
 
-    constructor(public bibtex_filePath: string, private maxMatches = 100) {
+    constructor(public bibtex_filePath: string, private maxMatches = 1000) {
 
     }
 
-    async parseBibtex() {
-        // FIXME Here we should wait with a promise that the parsing launched before has finished
-        if (this.workInProgress) { return; }
-
-        this.workInProgress = true;
-
+    async parseBibtex(): Promise<BibTeXDict | null> {
         let bibtexData: string;
         try {
             const t0 = Date.now();
@@ -27,18 +20,18 @@ export class BibtexParser {
             const t1 = Date.now();
             if (parserDebug) console.log("Bibtex file loaded in " + (t1 - t0) + " milliseconds.");
         } catch {
-            return;
+            return null;
         }
 
-        const parsedData = {};
+        const parsedData: BibTeXDict | null = {};
         let offset = 0;
         let isParsingComplete = false;
 
         const t2 = Date.now();
 
-        const processNextChunk = () => { // deadline: IdleDeadline
+        const processNextChunk = (): BibTeXDict | null => { // deadline: IdleDeadline
             try {
-                while (!isParsingComplete) { // deadline.timeRemaining() > 0 &&
+                while (!isParsingComplete) {
                     // Slice the data to start parsing from the last known offset
                     parse(bibtexData.slice(offset), {
                         MaxMatchesReachedError,
@@ -54,45 +47,28 @@ export class BibtexParser {
                 const t3 = Date.now();
                 if (parserDebug) console.log("Bibtex file parsed in " + (t3 - t2) + " milliseconds");
                 if (parserDebug) console.log(`Imported ${Object.keys(parsedData).length} entries`);
-                this.bibEntries = parsedData;
+                return parsedData;
 
             } catch (error) {
                 if (error instanceof MaxMatchesReachedError) {
                     // Update the offset based on the location returned by the error
                     offset += error.location.end.offset;
 
+                    console.log("Processed chunk");
+
                     // Request the next idle callback
-                    // requestIdleCallback(processNextChunk);
-                    window.setTimeout(async () => {
-                        processNextChunk()
-                    }, 10);
+                    processNextChunk();
                 } else {
                     console.error("Parsing error:", error);
                 }
+                return null;
             }
         };
 
         // Start processing the first chunk
-        // requestIdleCallback(processNextChunk);
         processNextChunk();
 
-        this.workInProgress = false;
-    }
-
-    setBibtexFilepath(bibtex_filePath: string): void {
-        this.bibEntries = null;
-        this.bibtex_filePath = bibtex_filePath;
-    }
-
-    async getBibEntry(citekey: string): Promise < BibTeXEntry | null > {
-        if (!this.bibEntries) {
-            await this.parseBibtex();
-        }
-        if (this.bibEntries) {
-            return this.bibEntries[citekey];
-        } else {
-            return null;
-        }
+        return parsedData;
     }
 
     // Function to read the .bib file and return its contents

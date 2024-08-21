@@ -1,13 +1,13 @@
 // main.ts
 
-import { BibtexParser } from 'bibtex_parser';
+import { BibtexManager } from 'bibtex_manager';
 import { App, FileSystemAdapter, Plugin, PluginManifest, PluginSettingTab, Setting } from 'obsidian';
 import * as path from 'path';
 
 import { BibtexIntegrationSettings } from 'types';
 import { parseBdskUrl, posixToFileURL, resolveBookmark } from 'utils';
 
-import LoadWorker from 'web-worker:./worker';
+import LoadWorker from 'web-worker:./bibtex.worker';
 import { WorkerManager } from 'worker_manager';
 
 const DEFAULT_SETTINGS: BibtexIntegrationSettings = {
@@ -22,11 +22,11 @@ export default class BibtexIntegration extends Plugin {
     private pluginPath: string;
     private bookmark_resolver_path: string;
 
-    private loadWorker = new WorkerManager(new LoadWorker(), {
+    public bibtexManager: BibtexManager | null = null;
+
+    private bibtexParserWorker = new WorkerManager(new LoadWorker(), {
         blockingChannel: true,
     });
-
-    bibtexParser: BibtexParser | null = null;
 
     constructor(app:App,manifest:PluginManifest) {
         super(app,manifest);
@@ -59,9 +59,10 @@ export default class BibtexIntegration extends Plugin {
             id: 'parse-bibtex',
             name: 'Parse BibTeX file',
             callback: async () => {
-                if(this.bibtexParser) {
-                    this.bibtexParser.parseBibtex();    
-                }
+                const bibEntries = await this.bibtexParserWorker.post({cmd: 'parse', bibtex_filepath: this.settings.bibtex_filepath});
+                console.log("ENTRIES");
+                console.log(bibEntries);
+                // this.bibtexManager = new BibtexManager(bibEntries);
             }
         });
 
@@ -82,16 +83,8 @@ export default class BibtexIntegration extends Plugin {
                 }
             }
         });*/
-        
-        this.bibtexParser = new BibtexParser(this.settings.bibtex_filepath);
 
-        console.log(this.loadWorker.post({bibtexParser:this.bibtexParser}));
-
-        window.setTimeout(async () => {
-            if(this.bibtexParser) {
-                this.bibtexParser.parseBibtex();    
-            }
-        }, 2000);
+        this.bibtexParserWorker.post({cmd: 'parse', bibtex_filepath: this.settings.bibtex_filepath});
         
          // Expose the method for external use
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -100,7 +93,7 @@ export default class BibtexIntegration extends Plugin {
 
     // Public method to set citation key and trigger command
     public async getUrlForCitekey(url: string): Promise<string | null> {
-        if(this.bibtexParser) {
+        if(this.bibtexManager) {
             const parsedUrl = parseBdskUrl(url);
             
             if(!parsedUrl) {
@@ -110,7 +103,7 @@ export default class BibtexIntegration extends Plugin {
 
             const { citekey, doc } = parsedUrl;
 
-            const bibEntry = await this.bibtexParser.getBibEntry(citekey);
+            const bibEntry = await this.bibtexManager.getBibEntry(citekey);
 
             if(bibEntry) {
                 const filepath = await resolveBookmark(this.bookmark_resolver_path,bibEntry,`bdsk-file-${doc}`);
@@ -165,9 +158,6 @@ class SampleSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.bibtex_filepath)
                 .onChange(async (value) => {
                     this.plugin.settings.bibtex_filepath = value;
-                    if(this.plugin.bibtexParser) {
-                        this.plugin.bibtexParser.setBibtexFilepath(this.plugin.settings.bibtex_filepath);
-                    }
                     await this.plugin.saveSettings();
                 }));
     }

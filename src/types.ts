@@ -1,5 +1,7 @@
 // types.ts
 
+import { BibtexParser } from "bibtex_parser";
+
 export interface Location {
     start: Position;
     end: Position;
@@ -27,6 +29,11 @@ export class MaxMatchesReachedError extends Error {
         this.name = "MaxMatchesReachedError";
         this.location = location;  // Store the location where parsing stopped
     }
+}
+
+export interface BibtexWorkerMsg {
+    cmd: string;
+    bibtex_filepath: string;
 }
 
 export interface BibtexIntegrationSettings {
