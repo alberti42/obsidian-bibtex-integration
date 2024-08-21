@@ -3,9 +3,14 @@
 import { parse } from "./peggy.mjs"
 import { BibTeXDict, MaxMatchesReachedError } from 'types';
 
-export const parserDebug = true;
+// FIXME: replace this with settings and updating the information on each call
+export let debug_parser = false;
 
 const maxMatches = 1000;
+
+export function set_debug_parser(value:boolean) {
+    debug_parser = value;
+}
 
 export async function parseBibtex(bibtexData:string): Promise<BibTeXDict | null> {
     
@@ -31,8 +36,8 @@ export async function parseBibtex(bibtexData:string): Promise<BibTeXDict | null>
 
             // Parsing finished
             const t3 = Date.now();
-            if (parserDebug) console.log("Bibtex file parsed in " + (t3 - t2) + " milliseconds");
-            if (parserDebug) console.log(`Imported ${Object.keys(parsedData).length} bibtex entries`);
+            if (debug_parser) console.log("Bibtex file parsed in " + (t3 - t2) + " milliseconds");
+            if (debug_parser) console.log(`Imported ${Object.keys(parsedData).length} bibtex entries`);
             return parsedData;
 
         } catch (error) {

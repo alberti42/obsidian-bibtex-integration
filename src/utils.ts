@@ -7,7 +7,7 @@ import { BibTeXEntry, isBookmark } from 'types';
 import { pathToFileURL } from 'url';
 import * as chokidar from 'chokidar'; // to watch for file changes
 import BibtexIntegration from 'main';
-import { parserDebug } from 'bibtex_parser';
+import { debug_parser } from 'bibtex_parser';
 
 let watcher: chokidar.FSWatcher | null = null;
 let watched_filepath: string | null = null;
@@ -173,7 +173,7 @@ export async function watchFile(filepath: string, plugin:BibtexIntegration) {
 
     watcher = chokidar.watch(filepath,watchOptions)
         .on('change', () => {
-            if(parserDebug) console.log(`The BibTex file ${watched_filepath} has changed and will be parsed agained.`)
+            if(debug_parser) console.log(`The BibTex file ${watched_filepath} has changed and will be parsed agained.`)
             plugin.parseBibtexFile();
         }
     );
