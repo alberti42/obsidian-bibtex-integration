@@ -12,7 +12,7 @@ import { parseBdskUrl, posixToFileURL, resolveBookmark, unwatchFile, watchFile }
 import LoadWorker from 'web-worker:./bibtex.worker';
 import { WorkerManager } from 'worker_manager';
 import { parserDebug } from 'bibtex_parser';
-import { CitekeyFuzzyModal } from 'citekeyFuzzyModal';
+// import { CitekeyFuzzyModal } from 'citekeyFuzzyModal';
 import { DEFAULT_SETTINGS } from 'defaults';
 
 export default class BibtexIntegration extends Plugin {
@@ -88,9 +88,9 @@ export default class BibtexIntegration extends Plugin {
 
     async showBibtexEntriesModal() {
         
-        const results = [{citekey: "Hello", test:"dsds"},{citekey: "World", test:"htghg"},{citekey: "Finished", test:"dfgf"}]
-        const modal = new CitekeyFuzzyModal(this.app, this, results);
-        modal.open();
+        // const results = [{citekey: "Hello", test:"dsds"},{citekey: "World", test:"htghg"},{citekey: "Finished", test:"dfgf"}]
+        // const modal = new CitekeyFuzzyModal(this.app, this, results);
+        // modal.open();
     }
 
     async parseBibtexFile() {
