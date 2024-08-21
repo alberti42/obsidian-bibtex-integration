@@ -1,7 +1,7 @@
 // main.ts
 
 import { BibtexManager } from 'bibtex_manager';
-import { App, FileSystemAdapter, Plugin, PluginManifest, PluginSettingTab, Setting } from 'obsidian';
+import { App, FileSystemAdapter, Plugin, PluginManifest, PluginSettingTab, Setting, TextComponent, ToggleComponent } from 'obsidian';
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -16,6 +16,7 @@ import { parserDebug } from 'bibtex_parser';
 const DEFAULT_SETTINGS: BibtexIntegrationSettings = {
     bibtex_filepath: '',
     import_delay_ms: 1000,
+    debug_parser: false,
 }
 
 export default class BibtexIntegration extends Plugin {
@@ -86,9 +87,9 @@ export default class BibtexIntegration extends Plugin {
             const t0 = Date.now();
             bibtexData = await this.readBibFile();
             const t1 = Date.now();
-            if (parserDebug) console.log("Bibtex file loaded in " + (t1 - t0) + " milliseconds.");
+            if (parserDebug) console.log("BibTex file loaded in " + (t1 - t0) + " milliseconds.");
         } catch {
-            console.error(`Unexpected error when loading bibtex file ${this.settings.bibtex_filepath}`);
+            console.error(`Unexpected error when loading BibTex file ${this.settings.bibtex_filepath}`);
             return;
         }
 
@@ -144,7 +145,7 @@ export default class BibtexIntegration extends Plugin {
                 return null;
             }
         } else {
-            console.error("Error:", "BibtexParser not initialized correctly");
+            console.error("Error:", "BibTex parser not initialized correctly");
             return null;
         }
     }
@@ -165,36 +166,60 @@ export default class BibtexIntegration extends Plugin {
 class SampleSettingTab extends PluginSettingTab {
     plugin: BibtexIntegration;
 
+    private bibtex_filepath_original: string;
+
     constructor(app: App, plugin: BibtexIntegration) {
         super(app, plugin);
         this.plugin = plugin;
+        this.bibtex_filepath_original = DEFAULT_SETTINGS.bibtex_filepath;
     }
 
     display(): void {
+        // Save the original setting before the user has the chance to change it
+        this.bibtex_filepath_original = this.plugin.settings.bibtex_filepath;
+
         const {containerEl} = this;
 
         containerEl.empty();
 
-        new Setting(containerEl).setName('Importing bibtex entries').setHeading();
+        new Setting(containerEl).setName('Importing BibTex entries').setHeading();
 
-        new Setting(containerEl)
-            .setName('Bibtex file')
-            .setDesc('Filename including path to the bibtex file to be imported')
-            .addText(text => text
-                .setPlaceholder('Filepath')
+        const bibtex_filepath_setting = new Setting(containerEl)
+            .setName('BibTex file')
+            .setDesc('Filename including path to the BibTex file to be imported');
+
+        let bibtex_filepath_text:TextComponent;
+        bibtex_filepath_setting.addText(text => {
+                bibtex_filepath_text = text;
+                text.setPlaceholder('Filepath')
                 .setValue(this.plugin.settings.bibtex_filepath)
                 .onChange(async (value) => {
                     this.plugin.settings.bibtex_filepath = value;
                     await this.plugin.saveSettings();
-                }));
+                })
+            });
 
-        new Setting(containerEl)
+        bibtex_filepath_setting.addExtraButton((button) => {
+            button
+                .setIcon("reset")
+                .setTooltip("Reset to default value")
+                .onClick(() => {
+                    const value = DEFAULT_SETTINGS.bibtex_filepath;
+                    bibtex_filepath_text.setValue(value);
+                    this.plugin.settings.bibtex_filepath = value;
+                    this.plugin.saveSettings();
+                });
+        });
+
+        const import_delay_setting = new Setting(containerEl)
             .setName('Delay on start')
-            .setDesc('A delay in milliseconds before importing the bibtex entries after the plugin has loaded. This may be useful to make Obsidian more responsive on start.')
-            .addText(text => {
+            .setDesc('A delay in milliseconds before importing the BibTex entries after the plugin has loaded. This may be useful to make Obsidian more responsive on start.');
+
+        let import_delay_text:TextComponent;
+        import_delay_setting.addText(text => {
+                import_delay_text = text;
                 const warningEl = containerEl.createEl('div', { cls: 'mod-warning' });
                 warningEl.style.display = 'none';  // Initially hide the warning
-
                 return text
                     .setPlaceholder('Delay in milliseconds')
                     .setValue(`${this.plugin.settings.import_delay_ms}`)
@@ -219,6 +244,54 @@ class SampleSettingTab extends PluginSettingTab {
                     });
             });
 
-        // FIXME Add toggle for debug parser log in the settings instead of parserDebug variable.
+        import_delay_setting.addExtraButton((button) => {
+            button
+                .setIcon("reset")
+                .setTooltip("Reset to default value")
+                .onClick(() => {
+                    const value = DEFAULT_SETTINGS.import_delay_ms;
+                    import_delay_text.setValue(`${value}`);
+                    this.plugin.settings.import_delay_ms = value;
+                    this.plugin.saveSettings();
+                });
+        });
+
+        const debug_parser_setting = new Setting(containerEl)
+            .setName('Debug BibTex parser')
+            .setDesc('If this option is enabled, information about the parsed BibTex files are provided in the developed console.');
+
+
+        let debug_parser_toggle: ToggleComponent;
+        debug_parser_setting.addToggle(toggle => {
+            debug_parser_toggle = toggle;
+            toggle
+            .setValue(this.plugin.settings.debug_parser)
+            .onChange(async (value: boolean) => {
+                this.plugin.settings.debug_parser = value;
+                this.plugin.saveSettings();
+            })
+        });
+
+        debug_parser_setting.addExtraButton((button) => {
+            button
+                .setIcon("reset")
+                .setTooltip("Reset to default value")
+                .onClick(() => {
+                    const value = DEFAULT_SETTINGS.debug_parser;
+                    debug_parser_toggle.setValue(DEFAULT_SETTINGS.debug_parser);
+                    this.plugin.settings.debug_parser = value;
+                    this.plugin.saveSettings();
+                });
+        });
+    }
+
+     hide(): void {
+        super.hide();
+        // Detect when the settings pane is closed
+        
+        if(this.bibtex_filepath_original !== this.plugin.settings.bibtex_filepath) {
+            // if the setting has changed, parse the new bibtex file
+            this.plugin.parseBibtexFile();
+        }
     }
 }
