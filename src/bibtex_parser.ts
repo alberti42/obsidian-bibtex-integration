@@ -40,8 +40,6 @@ export async function parseBibtex(bibtexData:string): Promise<BibTeXDict | null>
                 // Update the offset based on the location returned by the error
                 offset += error.location.end.offset;
 
-                console.log("Processed chunk");
-
                 // Request the next idle callback
                 processNextChunk();
             } else {

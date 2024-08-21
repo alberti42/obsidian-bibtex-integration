@@ -7,10 +7,10 @@
 }
 
 main
-  = block*
+  = blocks:block* { return blocks.filter((item) => item)}
   
 block
-  = bibentry / comment / empty_lines / loose_line
+  = bibentry / empty_lines / comment / loose_line
 
 empty_lines
   = $(empty_line+) { return null; }
@@ -56,7 +56,7 @@ comment
   = $(_* "%" loose_line) { return null; }
 
 loose_line
-  = t:$(([^\n]* newline) ) { return "<<" + t + ">>"; }
+  = t:$(([^\n]* newline) ) { return null; }
 
 not_newline
   = [^\n]+

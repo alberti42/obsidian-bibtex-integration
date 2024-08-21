@@ -14,7 +14,8 @@ import { WorkerManager } from 'worker_manager';
 import { parserDebug } from 'bibtex_parser';
 
 const DEFAULT_SETTINGS: BibtexIntegrationSettings = {
-    bibtex_filepath: ''
+    bibtex_filepath: '',
+    import_delay_ms: 1000,
 }
 
 export default class BibtexIntegration extends Plugin {
@@ -84,7 +85,13 @@ export default class BibtexIntegration extends Plugin {
             }
         });*/
 
-        this.parseBibtexFile();
+        if(this.settings.import_delay_ms>0) {
+            setTimeout(() => {
+                this.parseBibtexFile();
+            }, this.settings.import_delay_ms);
+        } else {
+            this.parseBibtexFile();
+        }
 
          // Expose the method for external use
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -183,9 +190,11 @@ class SampleSettingTab extends PluginSettingTab {
 
         containerEl.empty();
 
+        new Setting(containerEl).setName('Importing bibtex entries').setHeading();
+
         new Setting(containerEl)
-            .setName('Bibtex')
-            .setDesc('Filepath of the bibtex file to be imported')
+            .setName('Bibtex file')
+            .setDesc('Filename including path to the bibtex file to be imported')
             .addText(text => text
                 .setPlaceholder('Filepath')
                 .setValue(this.plugin.settings.bibtex_filepath)
@@ -193,5 +202,36 @@ class SampleSettingTab extends PluginSettingTab {
                     this.plugin.settings.bibtex_filepath = value;
                     await this.plugin.saveSettings();
                 }));
+
+        new Setting(containerEl)
+            .setName('Delay on start')
+            .setDesc('A delay in milliseconds before importing the bibtex entries after the plugin has loaded. This may be useful to make Obsidian more responsive on start.')
+            .addText(text => {
+                const warningEl = containerEl.createEl('div', { cls: 'mod-warning' });
+                warningEl.style.display = 'none';  // Initially hide the warning
+
+                return text
+                    .setPlaceholder('Delay in milliseconds')
+                    .setValue(`${this.plugin.settings.import_delay_ms}`)
+                    .onChange(async (value) => {
+                        // Remove any previous warning text
+                        warningEl.textContent = '';
+
+                        // Try to parse the input as an integer
+                        const parsedValue = parseInt(value, 10);
+
+                        // Check if the value is a valid number and greater than or equal to 0
+                        if (isNaN(parsedValue) || parsedValue < 0) {
+                            // Show warning if the input is invalid
+                            warningEl.textContent = 'Please enter a valid number for the delay.';
+                            warningEl.style.display = 'block';
+                        } else {
+                            // Hide the warning and save the valid value
+                            warningEl.style.display = 'none';
+                            this.plugin.settings.import_delay_ms = parsedValue;
+                            await this.plugin.saveSettings();
+                        }
+                    });
+            });
     }
 }

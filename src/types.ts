@@ -33,6 +33,7 @@ export class MaxMatchesReachedError extends Error {
 
 export interface BibtexIntegrationSettings {
     bibtex_filepath: string;
+    import_delay_ms: number;
 }
 
 export interface Bookmark {
