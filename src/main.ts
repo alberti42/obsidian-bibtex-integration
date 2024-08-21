@@ -218,5 +218,7 @@ class SampleSettingTab extends PluginSettingTab {
                         }
                     });
             });
+
+        // FIXME Add toggle for debug parser log in the settings instead of parserDebug variable.
     }
 }
