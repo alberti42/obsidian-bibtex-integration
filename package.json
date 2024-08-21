@@ -27,6 +27,7 @@
 	},
 	"dependencies": {
 		"bplist-parser": "^0.3.2",
-		"monkey-around": "^3.0.0"
+		"monkey-around": "^3.0.0",
+		"promise-worker": "^2.0.1"
 	}
 }
