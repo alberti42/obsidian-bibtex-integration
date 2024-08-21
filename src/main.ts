@@ -78,8 +78,12 @@ export default class BibtexIntegration extends Plugin {
         
         this.bibtexParser = new BibtexParser(this.settings.bibtex_filepath);
 
-        // this.bibtexParser.parseBibtex();
-
+        window.setTimeout(async () => {
+            if(this.bibtexParser) {
+                this.bibtexParser.parseBibtex();    
+            }
+        }, 2000);
+        
          // Expose the method for external use
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (this.app.plugins.plugins[this.manifest.id] as any).getFilepathForCitekey = this.getUrlForCitekey.bind(this);
@@ -153,7 +157,7 @@ class SampleSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.bibtex_filepath = value;
                     if(this.plugin.bibtexParser) {
-                        this.plugin.bibtexParser.setBibtexFilePath(this.plugin.settings.bibtex_filepath);
+                        this.plugin.bibtexParser.setBibtexFilepath(this.plugin.settings.bibtex_filepath);
                     }
                     await this.plugin.saveSettings();
                 }));

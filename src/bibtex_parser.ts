@@ -71,7 +71,7 @@ export class BibtexParser {
         requestIdleCallback(processNextChunk);
     }
 
-    setBibtexFilepath(bibtex_filePath:string) {
+    setBibtexFilepath(bibtex_filePath:string): void {
         this.bibEntries = null;
         this.bibtex_filePath = bibtex_filePath;
     }
