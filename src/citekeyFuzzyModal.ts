@@ -77,7 +77,7 @@ export class CitekeyFuzzyModal extends FuzzySuggestModal < unknown > {
 	}
 
 	getItemText(item: BibTeXEntry): string {
-		return item.citekey;
+		return item.title;
 	}
 
 	renderSuggestion(fuzzyMatch: FuzzyMatch<BibTeXEntry>, el: HTMLElement) {
