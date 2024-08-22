@@ -6,7 +6,7 @@ import { App, FileSystemAdapter, Plugin, PluginManifest, PluginSettingTab, Setti
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { BibtexIntegrationSettings, ParserOptions, ParserWorkerInputs, ParserWorkerReply } from 'types';
+import { BibtexIntegrationSettings, ParserWorkerInputs, ParserWorkerReply } from 'types';
 import { parseBdskUrl, posixToFileURL, resolveBookmark, unwatchFile, watchFile } from 'utils';
 
 import LoadWorker from 'web-worker:./bibtex.worker';
@@ -23,9 +23,12 @@ export default class BibtexIntegration extends Plugin {
 
     public bibtexManager: BibtexManager | null = null;
 
-    private bibtexParserWorker = new WorkerManager(new LoadWorker(), {
-        blockingChannel: true,
-    });
+    private bibtexParserWorker = new WorkerManager<ParserWorkerReply,ParserWorkerInputs>(
+        new LoadWorker(),
+        {
+            blockingChannel: true,
+        }
+    );
 
     constructor(app:App,manifest:PluginManifest) {
         super(app,manifest);
@@ -45,6 +48,10 @@ export default class BibtexIntegration extends Plugin {
 
         // Path to the bookmark resolver utility
         this.bookmark_resolver_path = path.join(this.pluginPath,"bookmark_resolver");
+    }
+
+    getParserWorker() {
+        return this.bibtexParserWorker;
     }
     
     async onload() {
@@ -97,13 +104,9 @@ export default class BibtexIntegration extends Plugin {
 
         watchFile(this.settings.bibtex_filepath,this);
         
-        const parserOptions:ParserOptions = {debug_parser: this.settings.debug_parser};
-        const bibEntries = await this.bibtexParserWorker.post<ParserWorkerReply,ParserWorkerInputs>({bibtex_data, options: parserOptions});
-        if(bibEntries) {
-            this.bibtexManager = new BibtexManager(this,bibEntries);
-        } else {
-            this.bibtexManager = null;
-        }     
+        this.bibtexManager = new BibtexManager(this);
+
+        this.bibtexManager.parseBibtexData(bibtex_data);
     }
 
     // Function to read the .bib file and return its contents

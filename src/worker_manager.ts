@@ -6,7 +6,7 @@ import PromiseWorker from 'promise-worker';
  * Manages a Worker, recording its state and optionally preventing
  * message postings before responses to prior messages have been received.
  */
-export class WorkerManager {
+export class WorkerManager<TResult = unknown, TInput = unknown> {
   private worker = new PromiseWorker(this._worker);
   options: WorkerManagerOptions;
 
@@ -27,7 +27,7 @@ export class WorkerManager {
    * If `blockingChannel` option is true and the channel is currently blocked,
    * the message will be discarded and an error will be thrown.
    */
-  async post<TResult = unknown, TInput = unknown>(msg: TInput): Promise<TResult> {
+  async post(msg: TInput): Promise<TResult> {
     if (this.options.blockingChannel && this.blocked) {
       throw new WorkerManagerBlocked();
     }

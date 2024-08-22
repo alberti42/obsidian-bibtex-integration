@@ -1,17 +1,31 @@
 // bibtex_manager.ts
 
-import { BibTeXDict, BibTeXEntry } from "types";
+import { BibTeXDict, BibTeXEntry, ParserOptions } from "types";
 import { CitekeyFuzzyModal } from 'citekeyFuzzyModal';
 import BibtexIntegration from "main";
 
 export class BibtexManager {
-    
-    constructor(private plugin: BibtexIntegration, private bibEntries: BibTeXDict) {
+    private bibEntries: BibTeXDict = {};
+    private parserOptions:ParserOptions;
+
+    constructor(private plugin: BibtexIntegration) {
+
+        this.parserOptions = {
+            debug_parser: plugin.settings.debug_parser
+        };
+    }
+
+    async parseBibtexData(bibtex_data: string) {
+        const parserWorker = this.plugin.getParserWorker();
+
+        this.bibEntries = await parserWorker.post({
+            bibtex_data,
+            options: this.parserOptions
+        }) ?? {};
     }
 
     async showBibtexEntriesModal() {
-        
-        const modal = new CitekeyFuzzyModal(this.plugin, this.bibEntries);
+        const modal = new CitekeyFuzzyModal(this.plugin, this.bibEntries ?? {});
         modal.open();
     }
 

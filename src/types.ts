@@ -32,16 +32,6 @@ export interface BibTeXEntry {
     [key: string]: string;   // The fields within the entry (e.g., "author", "title", "year", etc.)
 }
 
-export class MaxMatchesReachedError extends Error {
-    location: Location;
-
-    constructor(message: string, location: Location) {
-        super(message);
-        this.name = "MaxMatchesReachedError";
-        this.location = location;  // Store the location where parsing stopped
-    }
-}
-
 export interface BibtexIntegrationSettings {
     bibtex_filepath: string;
     import_delay_ms: number;

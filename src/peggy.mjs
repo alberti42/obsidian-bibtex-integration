@@ -211,27 +211,24 @@ function peg$parse(input, options) {
   var peg$e15 = peg$classExpectation([" ", "\n", "\t"], false, false);
   var peg$e16 = peg$classExpectation([" ", "\t"], false, false);
 
-  var peg$f0 = function() { return null; };
-  var peg$f1 = function(type, citekey, f) {
+  var peg$f0 = function(blocks) { return blocks.filter((item) => item).reduce((acc, item) => {
+      acc[item.citekey] = item;
+      return acc;
+    }, {}) };
+  var peg$f1 = function() { return null; };
+  var peg$f2 = function(type, citekey, f) {
 
-    const entries = f.reduce((acc, current) => {
+    const bibentry = f.reduce((acc, current) => {
       acc[current[0]] = current[1];
       return acc;
     }, {});
-    entries.citekey = citekey;
-    entries.type = type;
+    bibentry.citekey = citekey;
+    bibentry.type = type;
     
-    // If max matches reached, throw the error and capture the position
-    if (count++ >= maxMatches) {
-      throw new MaxMatchesReachedError("Reached max matches", location()); // Pass last location with the error
-    }
-
-    parsedData[citekey] = entries;
-    
-    return null;
+    return bibentry;
   };
-  var peg$f2 = function() { return null; };
-  var peg$f3 = function(t) { return null; };
+  var peg$f3 = function() { return null; };
+  var peg$f4 = function(t) { return null; };
   var peg$currPos = options.peg$currPos | 0;
   var peg$savedPos = peg$currPos;
   var peg$posDetailsCache = [{ line: 1, column: 1 }];
@@ -395,14 +392,18 @@ function peg$parse(input, options) {
   }
 
   function peg$parsemain() {
-    var s0, s1;
+    var s0, s1, s2;
 
-    s0 = [];
-    s1 = peg$parseblock();
-    while (s1 !== peg$FAILED) {
-      s0.push(s1);
-      s1 = peg$parseblock();
+    s0 = peg$currPos;
+    s1 = [];
+    s2 = peg$parseblock();
+    while (s2 !== peg$FAILED) {
+      s1.push(s2);
+      s2 = peg$parseblock();
     }
+    peg$savedPos = s0;
+    s1 = peg$f0(s1);
+    s0 = s1;
 
     return s0;
   }
@@ -446,7 +447,7 @@ function peg$parse(input, options) {
     }
     if (s1 !== peg$FAILED) {
       peg$savedPos = s0;
-      s1 = peg$f0();
+      s1 = peg$f1();
     }
     s0 = s1;
 
@@ -545,7 +546,7 @@ function peg$parse(input, options) {
             if (s11 !== peg$FAILED) {
               s12 = peg$parseempty_chars();
               peg$savedPos = s0;
-              s0 = peg$f1(s2, s6, s10);
+              s0 = peg$f2(s2, s6, s10);
             } else {
               peg$currPos = s0;
               s0 = peg$FAILED;
@@ -983,7 +984,7 @@ function peg$parse(input, options) {
     }
     if (s1 !== peg$FAILED) {
       peg$savedPos = s0;
-      s1 = peg$f2();
+      s1 = peg$f3();
     }
     s0 = s1;
 
@@ -1029,7 +1030,7 @@ function peg$parse(input, options) {
     }
     if (s1 !== peg$FAILED) {
       peg$savedPos = s0;
-      s1 = peg$f3(s1);
+      s1 = peg$f4(s1);
     }
     s0 = s1;
 
@@ -1185,11 +1186,6 @@ function peg$parse(input, options) {
   }
 
 
-  let count = 0;
-
-  const MaxMatchesReachedError = options.MaxMatchesReachedError ?? Error;
-  const maxMatches = options.maxMatches ?? 100;  // Define the maximum number of matches
-  const parsedData = options.parsedData ?? {};
 
   peg$result = peg$startRuleFunction();
 
