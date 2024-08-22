@@ -3,13 +3,7 @@
 import { parse } from "./peggy.mjs"
 import { BibTeXDict, MaxMatchesReachedError, ParserWorkerInputs } from 'types';
 
-export let debug_parser = false;
-
 const maxMatches = 1000;
-
-export function set_debug_parser(value:boolean) {
-    debug_parser = value;
-}
 
 export async function parseBibtex(msg:ParserWorkerInputs): Promise<BibTeXDict | null> {
     
@@ -17,8 +11,8 @@ export async function parseBibtex(msg:ParserWorkerInputs): Promise<BibTeXDict | 
     let offset = 0;
     let isParsingComplete = false;
 
-    const bibtexData = msg.bibtexData;
-    debug_parser = msg.debug_parser;
+    const bibtexData = msg.bibtex_data;
+    const debug_parser = msg.options.debug_parser;
 
     const t2 = Date.now();
 

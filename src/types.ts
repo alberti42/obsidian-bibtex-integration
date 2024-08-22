@@ -18,7 +18,11 @@ export interface BibTeXDict {
 export type ParserWorkerReply = BibTeXDict | null;
 
 export interface ParserWorkerInputs {
-    bibtexData: string;
+    bibtex_data: string;
+    options: ParserOptions;
+}
+
+export interface ParserOptions {
     debug_parser: boolean;
 }
 

@@ -11,7 +11,6 @@ import { parseBdskUrl, posixToFileURL, resolveBookmark, unwatchFile, watchFile }
 
 import LoadWorker from 'web-worker:./bibtex.worker';
 import { WorkerManager } from 'worker_manager';
-import { debug_parser, set_debug_parser } from 'bibtex_parser';
 // import { CitekeyFuzzyModal } from 'citekeyFuzzyModal';
 import { DEFAULT_SETTINGS } from 'defaults';
 
@@ -99,7 +98,7 @@ export default class BibtexIntegration extends Plugin {
             const t0 = Date.now();
             bibtexData = await this.readBibFile();
             const t1 = Date.now();
-            if (debug_parser) console.log("BibTex file loaded in " + (t1 - t0) + " milliseconds.");
+            if (this.settings.debug_parser) console.log("BibTex file loaded in " + (t1 - t0) + " milliseconds.");
         } catch {
             console.error(`Unexpected error when loading BibTex file ${this.settings.bibtex_filepath}`);
             return;
@@ -168,7 +167,6 @@ export default class BibtexIntegration extends Plugin {
 
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-        set_debug_parser(this.settings.debug_parser);
     }
 
     async saveSettings() {
@@ -281,7 +279,6 @@ class SampleSettingTab extends PluginSettingTab {
             .setValue(this.plugin.settings.debug_parser)
             .onChange(async (value: boolean) => {
                 this.plugin.settings.debug_parser = value;
-                set_debug_parser(value);
                 this.plugin.saveSettings();
             })
         });
@@ -294,7 +291,6 @@ class SampleSettingTab extends PluginSettingTab {
                     const value = DEFAULT_SETTINGS.debug_parser;
                     debug_parser_toggle.setValue(DEFAULT_SETTINGS.debug_parser);
                     this.plugin.settings.debug_parser = value;
-                    set_debug_parser(value);
                     this.plugin.saveSettings();
                 });
         });
