@@ -10,6 +10,19 @@ The plugin does not require the paper library to be stored in the vault. This is
 
 ![setting_screenshot](docs/images/suggestion_menu_screenshot.jpg)
 
+## Installation
+
+From command line:
+
+1. Clone the repository to a local folder: `https://github.com/alberti42/obsidian-bibtex-integration.git`.
+2. Install the `node.js` packages: `npm install`
+3. Generate the parser for parsing BibTex files:  `npm run grammar`
+4. Using Swift compiler, build the utility resolving macOS bookmarks: `npm run bookmark_resolver`. This step requires you to have `swiftc` available from command line; see Apple Xcode instrutions how to make it available.
+5. Transpile the plugin: `npm run build`
+6. Check that in the subfolder `dist` the following files have been created: `styles.css
+bookmark_resolver`, `main.js`, `manifest.json`
+7. Create in your vault the folder for the plugin: `mkdir -p <REPLACE_WITH_YOUR_VAULT_FOLDER/.obsidian/plugins/bibtex-integration`
+8. Copy the files listed at point 6. to the folder created at point 7. Alterantively, create symbolic links (e.g., using `ln -s ...`) if you plan to fork the project and do further development, where you need to repeat the steps above often.
 
 ## Donations
 
