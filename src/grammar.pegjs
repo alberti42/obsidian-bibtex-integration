@@ -2,10 +2,7 @@
 }
 
 main
-  = blocks:block* { return blocks.filter((item) => item).reduce((acc, item) => {
-      acc[item.citekey] = item;
-      return acc;
-    }, {}) }
+  = blocks:block* { return blocks.filter((item) => item) }
   
 block
   = bibentry / empty_lines / comment / loose_line

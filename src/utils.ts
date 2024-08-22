@@ -3,7 +3,8 @@
 import * as bplist from 'bplist-parser';
 import { spawn } from 'child_process';
 import * as path from 'path';
-import { BibTeXEntry, isBookmark } from 'types';
+import { promises as fs } from 'fs';
+import { BibTeXEntry, isBookmark, ParsedUri, Queries } from 'types';
 import { pathToFileURL } from 'url';
 import * as chokidar from 'chokidar'; // to watch for file changes
 import BibtexIntegration from 'main';
@@ -11,19 +12,33 @@ import BibtexIntegration from 'main';
 let watcher: chokidar.FSWatcher | null = null;
 let watched_filepath: string | null = null;
 
-export function parseBdskUrl(url: string): { citekey: string; doc: number } | null {
-    // Regular expression to capture the citekey and the doc number
-    const regex = /x-bdsk:\/\/([^?]+)\?doc=(\d+)/;
-    
+
+export function parseUri(url: string): ParsedUri | null {
+    // Regular expression to capture the scheme, address, and optional query string
+    const regex = /\s*([^:]+):\/\/([^?]*)(\?(.*))?/;
+
     const match = url.match(regex);
-    
+
     if (match) {
-        const citekey = decodeURIComponent(match[1]); // Decode the citekey
-        const doc = parseInt(match[2], 10); // Parse the doc number as an integer
-        
-        return { citekey, doc };
+        const scheme = match[1];
+        const address = decodeURIComponent(match[2]);
+
+        let queries: Queries = {};
+
+        if (match[4]) { // Check if there's a query part
+            queries = {};
+            const queryString = match[4];
+            const fields = queryString.split('&');
+
+            for (const field of fields) {
+                const [key, value] = field.split('=');
+                queries[key] = value ? decodeURIComponent(value) : null;
+            }
+        }
+
+        return { scheme, address, queries };
     }
-    
+
     return null; // Return null if the pattern doesn't match
 }
 
@@ -79,41 +94,69 @@ export async function processBinaryPlist(binaryData: Uint8Array): Promise<unknow
     }
 }
 
+export async function fileExists(path:string) {
+    return await fs.stat(path).then(() => true, () => false);
+}
+
 // Function to resolve bookmark using the Swift command-line tool with Base64 piping
-export function bookmark_resolver(bookmark_resolver_path: string, base64Bookmark: string): Promise<string> {
+export function run_bookmark_resolver(bookmark_resolver_path: string, base64Bookmark: string): Promise<string> {
     return new Promise((resolve, reject) => {
-        // Spawn the child process with the -p option
-        const child = spawn(bookmark_resolver_path, ['-p'], { stdio: ['pipe', 'pipe', 'pipe'] });
-
-        let stdout = '';
-        let stderr = '';
-
-        // Collect stdout data
-        child.stdout.on('data', (data) => {
-            stdout += data.toString();
-        });
-
-        // Collect stderr data
-        child.stderr.on('data', (data) => {
-            stderr += data.toString();
-        });
-
-        // Handle process exit
-        child.on('close', (code) => {
-            if (code !== 0 || stderr) {
-                reject(`Error resolving bookmark: ${stderr || 'Unknown error'}`);
-            } else {
-                resolve(stdout.trim());
+        // Use fileExists as a promise and chain the actions using .then()
+        fileExists(bookmark_resolver_path).then((exists) => {
+            if (!exists) {
+                reject(`could not find bookmark_resolver utility at: ${bookmark_resolver_path}`);
+                return;
             }
-        });
 
-        // Write the Base64 bookmark to stdin
-        if (child.stdin) {
-            child.stdin.write(base64Bookmark);
-            child.stdin.end(); // Signal that we are done writing to stdin
-        }
+            try {
+                // Spawn the child process with the -p option
+                const child = spawn(bookmark_resolver_path, ['-p'], { stdio: ['pipe', 'pipe', 'pipe'] });
+
+                let stdout = '';
+                let stderr = '';
+
+                // Collect stdout data
+                child.stdout.on('data', (data) => {
+                    stdout += data.toString();
+                });
+
+                // Collect stderr data
+                child.stderr.on('data', (data) => {
+                    stderr += data.toString();
+                });
+
+                // Handle process errors
+                child.on('error', (error) => {
+                    console.error("Child process error:", error);
+                    reject(`failed to spawn process: ${error.message}`);
+                });
+
+                // Handle process exit
+                child.on('close', (code) => {
+                    if (code !== 0 || stderr) {
+                        console.error(`Error: process exited with code ${code}, stderr: ${stderr}`);
+                        reject(`could not resolve bookmark: ${stderr || 'Unknown error'}`);
+                    } else {
+                        resolve(stdout.trim()); // trim to remove extra newlines
+                    }
+                });
+
+                // Write the Base64 bookmark to stdin
+                if (child.stdin) {
+                    child.stdin.write(base64Bookmark);
+                    child.stdin.end(); // Signal that we are done writing to stdin
+                }
+            } catch (error) {
+                reject(`could not execute bookmark_resolver utility: ${error}`);
+                return;
+            }
+        }).catch(error => {
+            reject(`failed to check if file exists: ${error}`);
+            return;
+        });
     });
 }
+
 
 export async function resolveBookmark(bookmark_resolver_path:string, bibEntry: BibTeXEntry, bdsk_file: string): Promise<string|null> {
     try {
@@ -127,9 +170,8 @@ export async function resolveBookmark(bookmark_resolver_path:string, bibEntry: B
                 console.error('Error:', 'not valid bookmark');
                 return null;
             }
-
-
-            return await bookmark_resolver(bookmark_resolver_path, uint8ArrayToBase64(plistData.bookmark));
+            return await run_bookmark_resolver(bookmark_resolver_path, uint8ArrayToBase64(plistData.bookmark));
+            // return await run_bookmark_resolver(bookmark_resolver_path, uint8ArrayToBase64(plistData.bookmark));
         } else {
             console.error('Error:', 'not valid plist in bibtex field bdsk-file');
             return null;

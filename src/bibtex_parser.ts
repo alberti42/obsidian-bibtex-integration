@@ -1,9 +1,9 @@
 // bibtex_parser.ts
 
 import { parse } from "./peggy.mjs"
-import { BibTeXDict, ParserWorkerInputs } from 'types';
+import { ParserWorkerInputs, ParserWorkerReply } from 'types';
 
-export async function parseBibtex(msg:ParserWorkerInputs): Promise<BibTeXDict | null> {
+export async function parseBibtex(msg:ParserWorkerInputs): Promise<ParserWorkerReply> {
     
     const bibtexData = msg.bibtex_data;
     const debug_parser = msg.options.debug_parser;

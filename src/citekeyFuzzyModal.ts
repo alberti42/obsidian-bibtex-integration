@@ -30,7 +30,9 @@ export class CitekeyFuzzyModal extends FuzzySuggestModal < unknown > {
 	}
 
 	openDocument(citekey: string, shouldCreateNewLeaf: boolean = true) {
-        console.log(citekey);
+        const bibtexEntry = this.bibtexEntries[citekey];
+        console.log(bibtexEntry);
+        
 		// const fileToOpen: TFile = this.app.vault.getAbstractFileByPath(filePath) as TFile;
 		// if (!(fileToOpen instanceof TFile)) {
 		// 	// Handle the error if the file is not found
@@ -77,7 +79,7 @@ export class CitekeyFuzzyModal extends FuzzySuggestModal < unknown > {
 	}
 
 	getItemText(item: BibTeXEntry): string {
-		return item.title;
+		return item.citekey + ' ' + item.title;
 	}
 
 	renderSuggestion(fuzzyMatch: FuzzyMatch<BibTeXEntry>, el: HTMLElement) {

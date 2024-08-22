@@ -211,10 +211,7 @@ function peg$parse(input, options) {
   var peg$e15 = peg$classExpectation([" ", "\n", "\t"], false, false);
   var peg$e16 = peg$classExpectation([" ", "\t"], false, false);
 
-  var peg$f0 = function(blocks) { return blocks.filter((item) => item).reduce((acc, item) => {
-      acc[item.citekey] = item;
-      return acc;
-    }, {}) };
+  var peg$f0 = function(blocks) { return blocks.filter((item) => item) };
   var peg$f1 = function() { return null; };
   var peg$f2 = function(type, citekey, f) {
 

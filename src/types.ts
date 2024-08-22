@@ -15,7 +15,7 @@ export interface BibTeXDict {
     [key: string]: BibTeXEntry;   // The fields within the entry (e.g., "author", "title", "year", etc.)
 }
 
-export type ParserWorkerReply = BibTeXDict | null;
+export type ParserWorkerReply = BibTeXEntry[] | null;
 
 export interface ParserWorkerInputs {
     bibtex_data: string;
@@ -53,4 +53,14 @@ export function isBookmark(obj:unknown): obj is Bookmark {
     } else {
         return false;
     }
+}
+
+export interface ParsedUri {
+    scheme: string;
+    address: string;
+    queries: Queries;
+}
+
+export interface Queries {
+    [key: string]: string|null;
 }

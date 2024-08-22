@@ -7,7 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { BibtexIntegrationSettings, ParserWorkerInputs, ParserWorkerReply } from 'types';
-import { parseBdskUrl, posixToFileURL, resolveBookmark, unwatchFile, watchFile } from 'utils';
+import { unwatchFile, watchFile } from 'utils';
 
 import LoadWorker from 'web-worker:./bibtex.worker';
 import { WorkerManager } from 'worker_manager';
@@ -19,8 +19,7 @@ export default class BibtexIntegration extends Plugin {
     private vaultPath: string;
     private pluginsPath: string;
     private pluginPath: string;
-    private bookmark_resolver_path: string;
-
+    
     public bibtexManager: BibtexManager | null = null;
 
     private bibtexParserWorker = new WorkerManager<ParserWorkerReply,ParserWorkerInputs>(
@@ -45,20 +44,21 @@ export default class BibtexIntegration extends Plugin {
 
         // Path to this plugin folder in the vault
         this.pluginPath = path.join(this.pluginsPath,manifest.id);
-
-        // Path to the bookmark resolver utility
-        this.bookmark_resolver_path = path.join(this.pluginPath,"bookmark_resolver");
     }
 
     getParserWorker() {
         return this.bibtexParserWorker;
     }
     
+    getPluginPath() {
+        return this.pluginPath;
+    }
+
     async onload() {
         await this.loadSettings();
 
         // This adds a settings tab so the user can configure various aspects of the plugin
-        this.addSettingTab(new SampleSettingTab(this.app, this));
+        this.addSettingTab(new BibtexIntegrationSettingTab(this.app, this));
 
         // For example, triggering the worker when a command is run:
         this.addCommand({
@@ -87,7 +87,7 @@ export default class BibtexIntegration extends Plugin {
                 
          // Expose the method for external use
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (this.app.plugins.plugins[this.manifest.id] as any).getFilepathForCitekey = this.getUrlForCitekey.bind(this);
+        (this.app.plugins.plugins[this.manifest.id] as any).getFilepathForCitekey = this.getPdfUrlFromUrl.bind(this);
     }
 
     async parseBibtexFile() {
@@ -109,6 +109,16 @@ export default class BibtexIntegration extends Plugin {
         this.bibtexManager.parseBibtexData(bibtex_data);
     }
 
+    // Public method to set citation key and trigger command
+    public async getPdfUrlFromUrl(url: string): Promise<string | null> {
+        if(this.bibtexManager) {
+            return await this.bibtexManager.getPdfUrlFromUrl(url);
+        } else {
+            console.error("Error:", "BibTex parser not initialized correctly");
+            return null;    
+        }
+    }
+
     // Function to read the .bib file and return its contents
     async readBibFile(): Promise < string > {
         if (this.settings.bibtex_filepath.trim() === '') {
@@ -120,39 +130,6 @@ export default class BibtexIntegration extends Plugin {
         } catch (err) {
             console.error("Error reading file:", err);
             throw err; // Rethrow the error so the caller knows something went wrong
-        }
-    }
-
-    // Public method to set citation key and trigger command
-    public async getUrlForCitekey(url: string): Promise<string | null> {
-        if(this.bibtexManager) {
-            const parsedUrl = parseBdskUrl(url);
-            
-            if(!parsedUrl) {
-                console.error("Error:", `the url provided is not valid: ${url}`);
-                return null;
-            }
-
-            const { citekey, doc } = parsedUrl;
-
-            const bibEntry = await this.bibtexManager.getBibEntry(citekey);
-
-            if(bibEntry) {
-                const filepath = await resolveBookmark(this.bookmark_resolver_path,bibEntry,`bdsk-file-${doc}`);
-                
-                if(filepath) {
-                    return posixToFileURL(filepath);
-                } else {
-                    console.error("Error:", `could not resolve document number ${doc} for citekey ${citekey}`);
-                    return null;
-                }               
-            } else {
-                console.error("Error:", `no entry found for the citekey ${citekey}`);
-                return null;
-            }
-        } else {
-            console.error("Error:", "BibTex parser not initialized correctly");
-            return null;
         }
     }
 
@@ -169,7 +146,7 @@ export default class BibtexIntegration extends Plugin {
     }
 }
 
-class SampleSettingTab extends PluginSettingTab {
+class BibtexIntegrationSettingTab extends PluginSettingTab {
     plugin: BibtexIntegration;
 
     private bibtex_filepath_original: string;
@@ -300,4 +277,14 @@ class SampleSettingTab extends PluginSettingTab {
             this.plugin.parseBibtexFile();
         }
     }
+}
+
+export interface ParsedUri {
+    scheme: string;
+    address: string;
+    query: Queries|null;
+}
+
+export interface Queries {
+    [key: string]: string|null;
 }
