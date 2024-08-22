@@ -213,16 +213,16 @@ function peg$parse(input, options) {
 
   var peg$f0 = function(blocks) { return blocks.filter((item) => item) };
   var peg$f1 = function() { return null; };
-  var peg$f2 = function(type, citekey, f) {
-
-    const bibentry = f.reduce((acc, current) => {
-      acc[current[0]] = current[1];
-      return acc;
-    }, {});
-    bibentry.citekey = citekey;
-    bibentry.type = type;
-    
-    return bibentry;
+  var peg$f2 = function(t, c, f) {
+    return {
+      citekey:c,
+      type:t,
+      authors:[],
+      fields:f.reduce((acc, current) => {
+        acc[current[0]] = current[1];
+        return acc;
+      }, {})
+    }
   };
   var peg$f3 = function() { return null; };
   var peg$f4 = function(t) { return null; };

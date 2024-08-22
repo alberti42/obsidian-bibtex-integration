@@ -26,14 +26,14 @@ export interface ParserOptions {
     debug_parser: boolean;
 }
 
-
 export interface BibTeXEntry {
     citekey: string;
     type: string;
-    [key: string]: string;   // The fields within the entry (e.g., "author", "title", "year", etc.)
+    authors: ParsedAuthors;
+    fields: {[key: string]: string};   // The fields within the entry (e.g., "author", "title", "year", etc.)
 }
 
-export type ParsedAuthor = [firstName:string, lastName:string]
+export type ParsedAuthor = {firstName:string, lastName:string}
 export type ParsedAuthors = ParsedAuthor[];
 export interface ParsedAuthorsDict {
     [key:string]: ParsedAuthors;
@@ -89,7 +89,13 @@ export interface AuthorOptions {
     onlyLastName: boolean,
 }
 
+export enum HighlightType {
+    HTML,
+    MarkDown,
+    None,
+}
+
 export interface JournalReferenceOptions {
     includingYear: boolean,
-    highlightVolume: true,
+    highlightVolume: HighlightType,
 }

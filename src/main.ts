@@ -14,6 +14,7 @@ import { unwatchFile, watchFile, doesFolderExist, joinPaths, set_bookmark_resolv
 import LoadWorker from 'web-worker:./bibtex.worker';
 import { WorkerManager } from 'worker_manager';
 import { DEFAULT_SETTINGS } from 'defaults';
+import { CiteFuzzyModal, OpenPdfFuzzyModal } from 'citekeyFuzzyModal';
 
 export default class BibtexIntegration extends Plugin {
     settings: BibtexIntegrationSettings = DEFAULT_SETTINGS;
@@ -59,19 +60,35 @@ export default class BibtexIntegration extends Plugin {
         this.addSettingTab(new BibtexIntegrationSettingTab(this.app, this));
 
         // For example, triggering the worker when a command is run:
+        /*
         this.addCommand({
             id: 'parse-bibtex',
-            name: 'Parse BibTeX file',
+            name: 'Force parsing BibTeX file again',
             callback: async () => {
                 this.parseBibtexFile();
             }
         });
+        */
 
         this.addCommand({
             id: 'open-pdf-from-bibtex-library',
             name: 'Open paper from BibTex library',
             callback: () => {
-                if(this.bibtexManager) this.bibtexManager.showBibtexEntriesModal();
+                if(this.bibtexManager) {
+                    const modal = new OpenPdfFuzzyModal(this, this.bibtexManager);
+                    modal.open();
+                }
+            }
+        });
+
+        this.addCommand({
+            id: 'cite-paper-from-bibtex-library',
+            name: 'Cite paper from BibTex library',
+            callback: () => {
+                if(this.bibtexManager) {
+                    const modal = new CiteFuzzyModal(this, this.bibtexManager);
+                    modal.open();
+                }
             }
         });
 

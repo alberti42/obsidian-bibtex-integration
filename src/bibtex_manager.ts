@@ -1,27 +1,26 @@
 // bibtex_manager.ts
 
-import { AuthorOptions, BibTeXDict, BibTeXEntry, JournalReferenceOptions, ParsedAuthor, ParsedAuthorsDict, ParserOptions, Queries } from "types";
-import { CitekeyFuzzyModal } from "citekeyFuzzyModal";
+import { AuthorOptions, BibTeXDict, BibTeXEntry, HighlightType, JournalReferenceOptions, ParsedAuthor, ParserOptions, Queries } from "types";
 import { parseUri, posixToFileURL, resolveBookmark } from "utils"
 import { AuthorOptionsDefault, JournalReferenceOptionDefault } from "defaults"
 import BibtexIntegration from "main";
 
 function processTitles(bibEntriesArray:BibTeXEntry[]) {
     bibEntriesArray.forEach((item:BibTeXEntry) => {
-        if(item.hasOwnProperty('title')) {
-            const title = item.title;
+        if(item.fields.hasOwnProperty('title')) {
+            const title = item.fields.title;
             if (title[0] === '{' && title[title.length - 1] === '}') {
-                item.title = title.slice(1, -1);
+                item.fields.title = title.slice(1, -1);
             }
         } else {
-            item.title = '';
+            item.fields.title = '';
         }
     });
 }
 
-function parseAuthors(bibEntriesArray:BibTeXEntry[]): ParsedAuthorsDict {
-    return bibEntriesArray.reduce((acc:ParsedAuthorsDict,item:BibTeXEntry) => {
-        const authorList = item.author ?? "";
+function parseAuthors(bibEntriesArray:BibTeXEntry[]) {
+    bibEntriesArray.forEach((item:BibTeXEntry) => {
+        const authorList = item.fields.author ?? "";
 
         // Split the authors by "AND"
         const authors = authorList.split(/\s+and\s+/i).map(author => author.trim());
@@ -31,21 +30,21 @@ function parseAuthors(bibEntriesArray:BibTeXEntry[]): ParsedAuthorsDict {
             const [lastName, firstNameAndMidnames] = author.split(',').map(part => part.trim());
 
             // Process firstNameInitials to only show initials followed by a period
-            const initials = (firstNameAndMidnames ?? "").split(' ')
+            const firstName = (firstNameAndMidnames ?? "").split(' ')
                 .map(name => name.trim().charAt(0).toUpperCase() + '.').join(' ');
 
-            return [initials,lastName];
+            return {firstName,lastName};
         });
-        acc[item.citekey] = parsedAuthors;
-        return acc;
-    },{});    
+        
+        item.authors = parsedAuthors;
+    });    
 }
 
 export function getJournalReference(bibEntry: BibTeXEntry, options: JournalReferenceOptions = JournalReferenceOptionDefault) {
 
-    const journal = bibEntry.journal ?? "";
+    const journal = bibEntry.fields.journal ?? "";
 
-    const eprint = bibEntry.eprint;
+    const eprint = bibEntry.fields.eprint;
 
     const isArxiv = journal.trim().toLowerCase() === 'arxiv' && eprint;
 
@@ -54,26 +53,58 @@ export function getJournalReference(bibEntry: BibTeXEntry, options: JournalRefer
         journal_vol_page = `${journal}:${eprint}`;
     } else {
         let volume;
-        if(options.highlightVolume) {
-            volume = `<strong>${bibEntry.volume}</strong>` ?? ""
-        } else {
-            volume = bibEntry.volume ?? ""
+        switch(options.highlightVolume) {
+        case HighlightType.HTML:
+            volume = `<strong>${bibEntry.fields.volume}</strong>` ?? ""
+            break;
+        case HighlightType.MarkDown:
+            volume = `**${bibEntry.fields.volume}**` ?? ""
+            break;
+        default:
+            volume = bibEntry.fields.volume ?? ""
         }
-        const page = bibEntry.page ?? "";
+        const page = bibEntry.fields.page ?? "";
         const bothVolPage = [volume,page].join(',')
         journal_vol_page = [journal,bothVolPage].join(' ');
     }
     
-    const year = `(${bibEntry.year})` ?? "";
+    const year = `(${bibEntry.fields.year})` ?? "";
 
     const journalRef = [journal_vol_page,year].join(' ');
 
     return journalRef;
 }
 
+export function getAuthors(bibEntry: BibTeXEntry, options: AuthorOptions = AuthorOptionsDefault) {
+
+    const authors = bibEntry.authors;
+
+    const formattedAuthors = authors.map((author:ParsedAuthor):string => {
+        if(options.onlyLastName) {
+            return author.lastName;
+        } else {
+            return `${author.firstName} ${author.lastName}`; // Format: "Initials LastName"    
+        }   
+    })
+
+    if (options.shortList && formattedAuthors.length > 2) {
+        return `${formattedAuthors[0]} et al.`;
+    } else {
+        // Handle the case where there is more than one author
+        if (formattedAuthors.length > 1) {
+            const lastAuthor = formattedAuthors.pop(); // Remove the last author from the array
+            return `${formattedAuthors.join(', ')} and ${lastAuthor}`; // Join the others with commas, add "and" before the last author
+        }
+        return formattedAuthors.join('');    
+    }   
+}
+
+export function getTitle(bibEntry: BibTeXEntry) {
+    return bibEntry.fields.title ?? "No title";
+}
+
 export class BibtexManager {
     private bibEntries: BibTeXDict = {};
-    private parsedAuthors: ParsedAuthorsDict = {};
     private parserOptions:ParserOptions;
     
     constructor(private plugin: BibtexIntegration) {
@@ -99,21 +130,16 @@ export class BibtexManager {
         }
 
         const t3 = Date.now();
-        this.parsedAuthors = parseAuthors(bibEntriesArray);
+        parseAuthors(bibEntriesArray);
         const t4 = Date.now();
         if (this.plugin.settings.debug_parser) {
             console.log("BibTex authors' entries parsed in " + (t4 - t3) + " milliseconds");
         }
-
+        
         this.bibEntries = bibEntriesArray.reduce((acc: BibTeXDict, item: BibTeXEntry) => {
             acc[item.citekey] = item;
             return acc;
         }, {});
-    }
-
-    async showBibtexEntriesModal() {
-        const modal = new CitekeyFuzzyModal(this.plugin, this);
-        modal.open();
     }
 
     getBibEntry(citekey: string): BibTeXEntry | undefined {
@@ -122,31 +148,6 @@ export class BibtexManager {
 
     getBibEntriesAsArray():Array<BibTeXEntry> {
         return Object.values(this.bibEntries);
-    }
-
-
-    getAuthors(citekey: string, options: AuthorOptions = AuthorOptionsDefault) {
-
-        const authors = this.parsedAuthors[citekey];
-
-        const formattedAuthors = authors.map((author:ParsedAuthor):string => {
-            if(options.onlyLastName) {
-                return author[1];
-            } else {
-                return `${author[0]} ${author[1]}`; // Format: "Initials LastName"    
-            }   
-        })
-
-        if (options.shortList && formattedAuthors.length > 2) {
-            return `${formattedAuthors[0]} et al.`;
-        } else {
-            // Handle the case where there is more than one author
-            if (formattedAuthors.length > 1) {
-                const lastAuthor = formattedAuthors.pop(); // Remove the last author from the array
-                return `${formattedAuthors.join(', ')} and ${lastAuthor}`; // Join the others with commas, add "and" before the last author
-            }
-            return formattedAuthors.join('');    
-        }   
     }
 
     // Public method to set citation key and trigger command

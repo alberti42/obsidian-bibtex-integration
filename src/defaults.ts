@@ -1,6 +1,6 @@
 // defaults.ts
 
-import {BibtexIntegrationSettings, AuthorOptions, JournalReferenceOptions} from 'types'
+import {BibtexIntegrationSettings, AuthorOptions, JournalReferenceOptions, HighlightType} from 'types'
 
 export const DEFAULT_SETTINGS: BibtexIntegrationSettings = {
     bibtex_filepath: '',
@@ -18,5 +18,5 @@ export const AuthorOptionsDefault: AuthorOptions = {
 
 export const JournalReferenceOptionDefault: JournalReferenceOptions = {
     includingYear: true,
-    highlightVolume: true,
+    highlightVolume: HighlightType.None,
 }

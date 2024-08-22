@@ -11,16 +11,16 @@ empty_lines
   = $(empty_line+) { return null; }
 
 bibentry
-  = "@" type:$([^ {]*) empty_chars "{" empty_chars citekey:$[^ ,]+ empty_chars "," empty_chars f:fields "}" empty_chars {
-
-    const bibentry = f.reduce((acc, current) => {
-      acc[current[0]] = current[1];
-      return acc;
-    }, {});
-    bibentry.citekey = citekey;
-    bibentry.type = type;
-    
-    return bibentry;
+  = "@" t:$([^ {]*) empty_chars "{" empty_chars c:$[^ ,]+ empty_chars "," empty_chars f:fields "}" empty_chars {
+    return {
+      citekey:c,
+      type:t,
+      authors:[],
+      fields:f.reduce((acc, current) => {
+        acc[current[0]] = current[1];
+        return acc;
+      }, {})
+    }
   }
 
 fields

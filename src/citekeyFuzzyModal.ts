@@ -1,10 +1,12 @@
+// citekeyFuzzyModal.ts
+
 /* eslint-disable @typescript-eslint/no-inferrable-types */
-import { App, FuzzyMatch, FuzzySuggestModal, normalizePath, Notice, Platform, TFile } from 'obsidian';
+import { App, FuzzyMatch, FuzzySuggestModal, MarkdownView, normalizePath, Notice, Platform, TFile } from 'obsidian';
 
 import BibtexIntegration from 'main';
-import { BibTeXEntry, ParsedPath } from 'types';
+import { BibTeXEntry, HighlightType, ParsedPath } from 'types';
 import { createFolderIfNotExists, joinPaths, parseFilePath, resolveBookmark } from 'utils';
-import { BibtexManager, getJournalReference } from 'bibtex_manager';
+import { BibtexManager, getAuthors, getJournalReference, getTitle } from 'bibtex_manager';
 
 async function openBdskDocument(
             app:App,
@@ -57,75 +59,41 @@ async function openBdskDocument(
     }
 }
 
-export class CitekeyFuzzyModal extends FuzzySuggestModal <BibTeXEntry> {
-	constructor(private plugin: BibtexIntegration, private bibtexManager:BibtexManager) {
+function insertTextAtCursor(app: App, text: string) {
+    // Get the active leaf (tab)
+    const leaf = app.workspace.activeLeaf;
+
+    // Ensure the leaf is open and writable (not pinned)
+    if (leaf && leaf.view instanceof MarkdownView && !leaf.view.leaf.getViewState().pinned) {
+        // Get the editor instance from the leaf
+        const editor = leaf.view.editor;
+
+        if (editor) {
+            // Get the current cursor position
+            const cursor = editor.getCursor();
+
+            // Insert the text at the current cursor position
+            editor.replaceRange(text, cursor);
+
+            // Move the cursor to the end of the inserted text
+            const newCursorPos = {
+                line: cursor.line,
+                ch: cursor.ch + text.length // Move the cursor to the end of the inserted text
+            };
+            editor.setCursor(newCursorPos);
+        }
+    } else {
+        console.log('No active writable leaf or the leaf is pinned.');
+    }
+}
+
+abstract class BibEntriesFuzzyModal extends FuzzySuggestModal <BibTeXEntry> {
+	constructor(protected plugin: BibtexIntegration, protected bibtexManager:BibtexManager) {
         super(plugin.app);
-		this.setPlaceholder('Choose a paper to open...');
 		this.setInstructions(this.getInstructionsBasedOnOS());
 	}
 
-	getInstructionsBasedOnOS(): { command: string, purpose: string } [] {
-		if (Platform.isMacOS) {
-			return [
-				{ command: '↑↓', purpose: 'to navigate' },
-				{ command: "↵", purpose: "to open the selected file" },
-				{ command: '⌘+↵', purpose: 'to open in a new tab' },
-				{ command: 'esc', purpose: 'to dismiss' },
-			];
-		} else { // Default to Windows/Linux bindings
-			return [
-				{ command: '↑↓', purpose: 'to navigate' },
-				{ command: "↵", purpose: "to open the selected file" },
-				{ command: 'Ctrl+↵', purpose: 'to open in a new tab' },
-				{ command: 'esc', purpose: 'to dismiss' },
-			];
-		}
-	}
-
-	async openDocumentForBibEntry(bibEntry: BibTeXEntry, shouldCreateNewLeaf: boolean = true) {
-        // Path to the bookmark resolver utility
-        const bdskFiles = await Promise.all(
-            Object.keys(bibEntry)
-                .filter((item: string) => item.startsWith('bdsk-file-'))
-                .map(async (item: string): Promise<ParsedPath | null> => {
-                    const filepath = await resolveBookmark(bibEntry, item);
-                    if (!filepath) return null;
-                    return parseFilePath(filepath);
-                }));
-
-        // Filter out the null results after promises have resolved
-        const validBdskFiles = bdskFiles
-            .filter((item: ParsedPath | null): item is ParsedPath => item !== null) // Keep properly resolved docs
-            .filter((item: ParsedPath) => item.ext.toLowerCase() === '.pdf'); // Keep only PDFs
-
-        const num_bdsk_files = validBdskFiles.length;
-        if(num_bdsk_files === 0) {
-            const error_msg = "The chosen BibTex entry has no PDF document associated with.";
-            console.error(error_msg);
-            new Notice(error_msg);
-            return;
-        } else if (num_bdsk_files === 1) {
-
-            let folder_path;
-            if(this.plugin.settings.organize_by_years) {
-                folder_path = joinPaths(this.plugin.settings.pdf_folder,bibEntry.year ?? "unknown");
-            } else {
-                folder_path = this.plugin.settings.pdf_folder;
-            }
-
-            openBdskDocument(
-                this.app,
-                folder_path,
-                validBdskFiles[0].base,
-                bibEntry.citekey,
-                1,
-                shouldCreateNewLeaf
-            );
-        } else {
-            const modal = new PdfFileFuzzyModal(this.plugin, bibEntry, validBdskFiles);
-            modal.open();
-        }
-	}
+	abstract getInstructionsBasedOnOS(): { command: string, purpose: string } [];
 
 	onOpen() {
 		super.onOpen();
@@ -149,13 +117,25 @@ export class CitekeyFuzzyModal extends FuzzySuggestModal <BibTeXEntry> {
 
 	private handleKeyDown = (evt: KeyboardEvent) => {
 		// evt.isComposing determines whether the event is part of a key composition
-		if (evt.key === 'Enter' && !evt.isComposing && evt.metaKey) {
+		if (evt.key === 'Enter' && !evt.isComposing && evt.altKey) {
 			this.chooser.useSelectedItem(evt);
 		}
 	}
 
 	getItemText(item: BibTeXEntry): string {
-		return item.citekey + ' ' + item.title;
+        /*
+        let authors_str;
+        const len = item.authors.length;
+        if(len >= 2) {
+            authors_str = item.authors[0].lastName + ' ' + item.authors[len-1].lastName;
+        } else if(len == 1) {
+            authors_str = item.authors[0].lastName;
+        } else {
+            authors_str = '';
+        }
+        return [item.citekey,getTitle(item),authors_str].join(' ');
+        */
+		return [item.citekey,getTitle(item)].join(' ');
 	}
 
 	renderSuggestion(fuzzyMatch: FuzzyMatch<BibTeXEntry>, el: HTMLElement) {
@@ -165,15 +145,15 @@ export class CitekeyFuzzyModal extends FuzzySuggestModal <BibTeXEntry> {
 		suggestionContainer.classList.add('bibtex-integration-suggestions');
 
         const authorsEl = document.createElement('div');
-        authorsEl.innerText = this.bibtexManager.getAuthors(fuzzyMatch.item.citekey, {shortList:true, onlyLastName:true});
+        authorsEl.innerText = getAuthors(fuzzyMatch.item, {shortList:true, onlyLastName:true});
         authorsEl.classList.add('bibtex-integration-authors');
 		
 		const titleEl = document.createElement('div');
-        titleEl.innerText = fuzzyMatch.item.title ?? "No title";
+        titleEl.innerText = getTitle(fuzzyMatch.item);
         titleEl.classList.add('bibtex-integration-title');
 
         const journalRefEl = document.createElement('div');
-        journalRefEl.innerHTML = getJournalReference(fuzzyMatch.item, {includingYear:true, highlightVolume: true});
+        journalRefEl.innerHTML = getJournalReference(fuzzyMatch.item, {includingYear:true, highlightVolume: HighlightType.HTML});
         journalRefEl.classList.add('bibtex-integration-jref');
 
         const citekeyEl = document.createElement('div');
@@ -202,10 +182,115 @@ export class CitekeyFuzzyModal extends FuzzySuggestModal <BibTeXEntry> {
 		return this.bibtexManager.getBibEntriesAsArray();
 	}
 
-	onChooseItem(selectedItem:BibTeXEntry, evt:MouseEvent|KeyboardEvent): void {
-		const metaKeyPressed = evt.metaKey;
-		this.openDocumentForBibEntry(selectedItem, metaKeyPressed);
-	}
+	abstract onChooseItem(selectedItem:BibTeXEntry, evt:MouseEvent|KeyboardEvent): void;
+}
+
+export class OpenPdfFuzzyModal extends BibEntriesFuzzyModal {
+    constructor(plugin: BibtexIntegration, bibtexManager:BibtexManager) {
+        super(plugin,bibtexManager);
+        this.setPlaceholder('Choose a paper to open...');
+    }
+
+    getInstructionsBasedOnOS(): { command: string, purpose: string } [] {
+        let altSymbol;
+        if (Platform.isMacOS) {
+            altSymbol = '⌥';
+        } else { // Default to Windows/Linux bindings
+            altSymbol = 'Alt';
+        }
+        return [
+            { command: '↑↓', purpose: 'to navigate' },
+            { command: "↵", purpose: "to open the selected paper" },
+            { command: altSymbol+'+↵', purpose: 'to open in a new tab' },
+            { command: 'esc', purpose: 'to dismiss' },
+        ];
+    }
+
+    async openDocumentForBibEntry(bibEntry:BibTeXEntry, shouldCreateNewLeaf:boolean) {
+        // Path to the bookmark resolver utility
+        const bdskFiles = await Promise.all(
+            Object.keys(bibEntry.fields)
+                .filter((item: string):boolean => item.startsWith('bdsk-file-'))
+                .map(async (item: string): Promise<ParsedPath | null> => {
+                    const filepath = await resolveBookmark(bibEntry, item);
+                    if (!filepath) return null;
+                    return parseFilePath(filepath);
+                }));
+
+        // Filter out the null results after promises have resolved
+        const validBdskFiles = bdskFiles
+            .filter((item: ParsedPath | null): item is ParsedPath => item !== null) // Keep properly resolved docs
+            .filter((item: ParsedPath) => item.ext.toLowerCase() === '.pdf'); // Keep only PDFs
+
+        const num_bdsk_files = validBdskFiles.length;
+        if(num_bdsk_files === 0) {
+            const error_msg = "The chosen BibTex entry has no PDF document associated with.";
+            console.error(error_msg);
+            new Notice(error_msg);
+            return;
+        } else if (num_bdsk_files === 1) {
+
+            let folder_path;
+            if(this.plugin.settings.organize_by_years) {
+                folder_path = joinPaths(this.plugin.settings.pdf_folder,bibEntry.fields.year ?? "unknown");
+            } else {
+                folder_path = this.plugin.settings.pdf_folder;
+            }
+
+            openBdskDocument(
+                this.app,
+                folder_path,
+                validBdskFiles[0].base,
+                bibEntry.citekey,
+                1,
+                shouldCreateNewLeaf
+            );
+        } else {
+            const modal = new PdfFileFuzzyModal(this.plugin, bibEntry, validBdskFiles);
+            modal.open();
+        }
+    }
+
+    onChooseItem(selectedItem:BibTeXEntry, evt:MouseEvent|KeyboardEvent): void {
+        const altKeyPressed = evt.altKey;
+        this.openDocumentForBibEntry(selectedItem, altKeyPressed);
+    }
+}
+
+export class CiteFuzzyModal extends BibEntriesFuzzyModal {
+    constructor(plugin: BibtexIntegration, bibtexManager:BibtexManager) {
+        super(plugin,bibtexManager);
+        this.setPlaceholder('Choose a paper to cite...');
+    }
+
+    getInstructionsBasedOnOS(): { command: string, purpose: string } [] {
+        let altSymbol;
+        if (Platform.isMacOS) {
+            altSymbol = '⌥';
+        } else { // Default to Windows/Linux bindings
+            altSymbol = 'Alt';
+        }
+        return [
+            { command: '↑↓', purpose: 'to navigate' },
+            { command: "↵", purpose: "to cite (long form)" },
+            { command: altSymbol+'+↵', purpose: 'to cite (short form)' },
+            { command: 'esc', purpose: 'to dismiss' },
+        ];
+    }
+    
+    insertCitation(bibEntry:BibTeXEntry,shortCitation:boolean) {
+        const authors = getAuthors(bibEntry, {shortList:shortCitation, onlyLastName:false});
+        const journalRef = getJournalReference(bibEntry, {includingYear:true, highlightVolume: HighlightType.MarkDown});
+        const title = getTitle(bibEntry);
+        
+        const citation = [authors, [title, journalRef].join(' ')].join(', ');
+        insertTextAtCursor(this.plugin.app,citation);
+    }
+
+    onChooseItem(selectedItem:BibTeXEntry, evt:MouseEvent|KeyboardEvent): void {
+        const altKeyPressed = evt.altKey;
+        this.insertCitation(selectedItem, altKeyPressed);
+    }
 }
 
 export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPath> {
@@ -216,21 +301,18 @@ export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPath> {
     }
 
     getInstructionsBasedOnOS(): { command: string, purpose: string } [] {
+        let altSymbol;
         if (Platform.isMacOS) {
-            return [
-                { command: '↑↓', purpose: 'to navigate' },
-                { command: "↵", purpose: "to open the selected file" },
-                { command: '⌘+↵', purpose: 'to open in a new tab' },
-                { command: 'esc', purpose: 'to dismiss' },
-            ];
+            altSymbol = '⌥';
         } else { // Default to Windows/Linux bindings
-            return [
-                { command: '↑↓', purpose: 'to navigate' },
-                { command: "↵", purpose: "to open the selected file" },
-                { command: 'Ctrl+↵', purpose: 'to open in a new tab' },
-                { command: 'esc', purpose: 'to dismiss' },
-            ];
+            altSymbol = 'Alt';
         }
+        return [
+            { command: '↑↓', purpose: 'to navigate' },
+            { command: "↵", purpose: "to open the selected file" },
+            { command: altSymbol+'+↵', purpose: 'to open in a new tab' },
+            { command: 'esc', purpose: 'to dismiss' },
+        ];
     }
 
     onOpen() {
@@ -255,7 +337,7 @@ export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPath> {
 
     private handleKeyDown = (evt: KeyboardEvent) => {
         // evt.isComposing determines whether the event is part of a key composition
-        if (evt.key === 'Enter' && !evt.isComposing && evt.metaKey) {
+        if (evt.key === 'Enter' && !evt.isComposing && evt.altKey) {
             this.chooser.useSelectedItem(evt);
         }
     }
@@ -289,11 +371,11 @@ export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPath> {
     }
 
     onChooseItem(selectedItem: ParsedPath, evt: MouseEvent | KeyboardEvent): void {
-        const metaKeyPressed = evt.metaKey;
+        const altKeyPressed = evt.altKey;
 
         let folder_path;
         if(this.plugin.settings.organize_by_years) {
-            folder_path = joinPaths(this.plugin.settings.pdf_folder,this.bibEntry.year ?? "unknown");
+            folder_path = joinPaths(this.plugin.settings.pdf_folder,this.bibEntry.fields.year ?? "unknown");
         } else {
             folder_path = this.plugin.settings.pdf_folder;
         }
@@ -304,7 +386,7 @@ export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPath> {
             selectedItem.base,
             this.bibEntry.citekey,
             this.files.findIndex(item => item === selectedItem) + 1, // we add +1 because of the indexing starting from 0
-            metaKeyPressed
+            altKeyPressed
         );
     }
 }

@@ -178,11 +178,10 @@ export function run_bookmark_resolver(base64Bookmark: string): Promise<string> {
     });
 }
 
-
 export async function resolveBookmark(bibEntry: BibTeXEntry, bdsk_file: string): Promise<string|null> {
     try {
         // Convert Base64 to binary data
-        const binaryData = base64ToUint8Array(bibEntry[bdsk_file]);
+        const binaryData = base64ToUint8Array(bibEntry.fields[bdsk_file]);
 
         const plistData = await processBinaryPlist(binaryData);
         

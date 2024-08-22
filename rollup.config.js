@@ -48,8 +48,7 @@ export default {
         { src: 'styles/styles.css', dest: 'dist/', rename: 'styles.css' },  // Copy file as dist/styles.css
         { src: 'manifest.json', dest: 'dist/' },  // Copy manifest.json to dist folder
       ],
-      copyOnce: true,
-      verbose: true,
+      verbose: false,
     }),
   ].filter(Boolean),
 };
