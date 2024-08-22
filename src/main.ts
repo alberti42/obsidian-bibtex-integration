@@ -1,7 +1,9 @@
 // main.ts
 
 import { BibtexManager } from 'bibtex_manager';
-import { App, FileSystemAdapter, Plugin, PluginManifest, PluginSettingTab, Setting, TextComponent, ToggleComponent } from 'obsidian';
+import { App, FileSystemAdapter, normalizePath, PDFPlusLib, PdfPlusPlugin, Platform, Plugin, PluginManifest, PluginSettingTab, Setting, TextComponent, TFile, ToggleComponent } from 'obsidian';
+
+import { around } from 'monkey-around';
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -19,6 +21,8 @@ export default class BibtexIntegration extends Plugin {
     private vaultPath: string;
     private pluginsPath: string;
     private pluginPath: string;
+
+    private pdf_plus_plugin: PdfPlusPlugin | null = null;
     
     public bibtexManager: BibtexManager | null = null;
 
@@ -88,6 +92,58 @@ export default class BibtexIntegration extends Plugin {
          // Expose the method for external use
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (this.app.plugins.plugins[this.manifest.id] as any).getFilepathForCitekey = this.getPdfUrlFromUrl.bind(this);
+
+        this.app.workspace.onLayoutReady(() => {
+            // Wait that all plugins have been loaded to apply the monkey-patch
+            this.monkey_patch_PDF_plus();
+        });        
+    }
+
+    monkey_patch_PDF_plus() {
+        // Prevent duplicate patching
+        if (this.pdf_plus_plugin) return;
+
+        // Retrieve the PDF+ plugin and ensure it is loaded
+        const pdf_plus_plugin = this.app.plugins.getPlugin('pdf-plus') as PdfPlusPlugin | undefined;
+        if (!(pdf_plus_plugin && pdf_plus_plugin.lib)) {
+            console.log("PDF++ plugin cannot be monkey-patched because it is not loaded.");
+            return;
+        }
+        this.pdf_plus_plugin = pdf_plus_plugin;
+
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        const self = this;
+
+        // Patch getExternalPDFUrl function
+        const removeMonkeyPatchFnc = around(pdf_plus_plugin.lib, {
+            getExternalPDFUrl: function (next: (file: TFile) => Promise<string | null>) {
+                return async function (this: PDFPlusLib, file: TFile): Promise<string | null> { 
+                    if (file.stat.size > 300) return null;
+
+                    const content = (await this.app.vault.read(file)).trim();
+
+                    if (content.startsWith('x-bdsk://')) {
+                        const url = await self.getPdfUrlFromUrl(content);
+                        if(url) {
+                            return Platform.resourcePathPrefix + url.substring(8);
+                        } else {
+                            console.error("Error:", `could not resolve url: ${content}`);
+                            return null;
+                        }
+                    }
+
+                    // Call the original function using .call to preserve the `this` context
+                    const result = await next.call(this, file);
+
+                    // Return the (potentially modified) result
+                    return result;
+                };
+            }
+        });
+
+        // Register the cleanup function so the patch can be removed later
+        this.register(removeMonkeyPatchFnc);
+        return;
     }
 
     async parseBibtexFile() {
@@ -285,13 +341,14 @@ class BibtexIntegrationSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         // Remove any previous warning text
                         warningEl.textContent = '';
-                        if (!doesFolderExist(this.app.vault,value)) {
+                        const path = normalizePath(value);
+                        if (!doesFolderExist(this.app.vault,path)) {
                             warningEl.textContent = 'Please enter the path of an existing folder in your vault.';
                             warningEl.style.display = 'block';
                         } else {
                             // Hide the warning and save the valid value
                             warningEl.style.display = 'none';
-                            this.plugin.settings.pdf_folder = value;
+                            this.plugin.settings.pdf_folder = path;
                             await this.plugin.saveSettings();
                         }
                     });
@@ -312,10 +369,9 @@ class BibtexIntegrationSettingTab extends PluginSettingTab {
 
     }
 
-     hide(): void {
+    // Triggered when the settings pane is closed
+    hide(): void {
         super.hide();
-        // Detect when the settings pane is closed
-        
         if(this.bibtex_filepath_original !== this.plugin.settings.bibtex_filepath) {
             // if the setting has changed, parse the new bibtex file
             this.plugin.parseBibtexFile();

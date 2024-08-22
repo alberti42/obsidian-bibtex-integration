@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/no-inferrable-types */
-import { FuzzyMatch, FuzzySuggestModal, Platform } from 'obsidian';
+import { FuzzyMatch, FuzzySuggestModal, Platform, TFile } from 'obsidian';
 
 import BibtexIntegration from 'main';
 import { BibTeXDict, BibTeXEntry } from 'types';
+import { createFolderIfNotExists, joinPaths } from 'utils';
+import { getAuthors } from 'bibtex_manager';
 
 export class CitekeyFuzzyModal extends FuzzySuggestModal < unknown > {
 	constructor(private plugin: BibtexIntegration, private bibtexEntries: BibTeXDict ) {
@@ -29,26 +31,49 @@ export class CitekeyFuzzyModal extends FuzzySuggestModal < unknown > {
 		}
 	}
 
-	openDocument(citekey: string, shouldCreateNewLeaf: boolean = true) {
-        const bibtexEntry = this.bibtexEntries[citekey];
-        console.log(bibtexEntry);
+	async openDocument(citekey: string, shouldCreateNewLeaf: boolean = true) {
+        const bibEntry = this.bibtexEntries[citekey];
+        const year = bibEntry.year ?? "unknown";
+        const pdf_folder = joinPaths(this.plugin.settings.pdf_folder,year);
+        const pdf_filepath = joinPaths(pdf_folder,encodeURIComponent(citekey) + ".pdf");
+        const doc = 1;
         
-		// const fileToOpen: TFile = this.app.vault.getAbstractFileByPath(filePath) as TFile;
-		// if (!(fileToOpen instanceof TFile)) {
-		// 	// Handle the error if the file is not found
-		// 	const msg = 'File not found';
-		// 	new Notice(msg + '.');
-		// 	console.error(msg + ':', filePath);
-		// }
-		// let leaf = this.app.workspace.getMostRecentLeaf();
-		// if (shouldCreateNewLeaf || (leaf && leaf.getViewState().pinned)) {
-        //     leaf = this.app.workspace.getLeaf('tab');
-		// }
-		// if (leaf) {
-		// 	leaf.openFile(fileToOpen);
-		// } else {
-		// 	console.error("Error in creating a leaf for the file to be opened:", filePath);
-		// }
+        createFolderIfNotExists(this.plugin.app.vault,pdf_folder);
+        
+        const pdf_content = encodeURI(`x-bdsk://${citekey}?doc=${doc}`);
+
+        let pdf_file_to_open = this.plugin.app.vault.getFileByPath(pdf_filepath);
+        if (pdf_file_to_open instanceof TFile) {
+            await this.plugin.app.vault.modify(pdf_file_to_open, pdf_content);
+        } else {
+            await this.plugin.app.vault.create(pdf_filepath, pdf_content);
+            pdf_file_to_open = this.plugin.app.vault.getFileByPath(pdf_filepath);
+        }
+
+		if (!(pdf_file_to_open instanceof TFile)) {
+            console.error("Error: could not open the file:", pdf_filepath);
+			return;
+		}
+
+		let leaf = this.app.workspace.getMostRecentLeaf();
+		if (shouldCreateNewLeaf || (leaf && leaf.getViewState().pinned)) {
+            leaf = this.app.workspace.getLeaf('tab');
+		}
+		if (leaf) {
+			leaf.openFile(pdf_file_to_open);
+            const view = leaf.view;
+            // This will change the title displayed in the leaf tab
+            if (view && view.containerEl) {
+                // const leaf_title = [
+                //     getAuthors(bibEntry, {shortList:true, onlyLastName:true}),
+                //     `(${year})`
+                // ].join(' ');
+                // leaf.tabHeaderEl.setText(leaf_title);
+                // leaf.tabHeaderEl.ariaLabel = leaf_title;
+            }
+		} else {
+			console.error("Error in creating a leaf for the file to be opened:", pdf_filepath);
+		}
 	}
 
 	onOpen() {

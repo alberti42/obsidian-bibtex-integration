@@ -87,4 +87,9 @@ declare module "obsidian" {
         setSuggestions: (items: T[]) => void;
         useSelectedItem: (event?: KeyboardEvent) => void;
     }
+
+    interface WorkspaceLeaf {
+        tabHeaderEl: HTMLElement;
+        tabHeaderInnerTitleEl: HTMLElement;
+    }
 }

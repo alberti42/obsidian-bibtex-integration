@@ -1,8 +1,9 @@
 // bibtex_manager.ts
 
-import { BibTeXDict, BibTeXEntry, ParserOptions, Queries } from "types";
+import { AuthorOptions, BibTeXDict, BibTeXEntry, ParserOptions, Queries } from "types";
 import { CitekeyFuzzyModal } from "citekeyFuzzyModal";
-import { parseUri as parseUri, posixToFileURL, resolveBookmark } from "utils"
+import { parseUri, posixToFileURL, resolveBookmark } from "utils"
+import { AuthorOptionsDefault } from "defaults"
 import BibtexIntegration from "main";
 import * as path from "path";
 
@@ -17,6 +18,40 @@ function processTitles(bibEntriesArray:BibTeXEntry[]) {
             item.title = '';
         }
     });
+}
+
+export function getAuthors(bibEntry: BibTeXEntry, options: AuthorOptions = AuthorOptionsDefault) {
+
+    const authorList = bibEntry.author ?? "";
+
+    // Split the authors by "AND"
+    const authors = authorList.split(/\s+and\s+/i).map(author => author.trim());
+    
+    // Format each author
+    const formattedAuthors = authors.map(author => {
+        const [lastName, firstNameInitials] = author.split(',').map(part => part.trim());
+
+        if(options.onlyLastName) {
+            return lastName;
+        } else {
+            // Process firstNameInitials to only show initials followed by a period
+            const initials = firstNameInitials.split(' ')
+                .map(name => name.trim().charAt(0).toUpperCase() + '.').join(' ');
+
+            return `${initials} ${lastName}`; // Format: "Initials LastName"    
+        }      
+    });
+
+    if (options.shortList && formattedAuthors.length > 2) {
+        return `${formattedAuthors[0]}, et al.`;
+    } else {
+        // Handle the case where there is more than one author
+        if (formattedAuthors.length > 1) {
+            const lastAuthor = formattedAuthors.pop(); // Remove the last author from the array
+            return `${formattedAuthors.join(', ')} and ${lastAuthor}`; // Join the others with commas, add "and" before the last author
+        }
+        return formattedAuthors.join('');    
+    }   
 }
 
 export class BibtexManager {

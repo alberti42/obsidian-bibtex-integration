@@ -1,6 +1,11 @@
 // defaults.ts
 
-import {BibtexIntegrationSettings} from 'types'
+import {BibtexIntegrationSettings, AuthorOptions} from 'types'
+
+export const AuthorOptionsDefault: AuthorOptions = {
+    shortList: false,
+    onlyLastName: false,
+}
 
 export const DEFAULT_SETTINGS: BibtexIntegrationSettings = {
     bibtex_filepath: '',

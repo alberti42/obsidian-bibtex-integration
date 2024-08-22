@@ -65,3 +65,10 @@ export interface ParsedUri {
 export interface Queries {
     [key: string]: string|null;
 }
+
+/* Citation formats */
+
+export interface AuthorOptions {
+    shortList: boolean,
+    onlyLastName: boolean,
+}

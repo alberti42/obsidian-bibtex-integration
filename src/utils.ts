@@ -8,11 +8,15 @@ import { BibTeXEntry, isBookmark, ParsedUri, Queries } from 'types';
 import { pathToFileURL } from 'url';
 import * as chokidar from 'chokidar'; // to watch for file changes
 import BibtexIntegration from 'main';
-import { TAbstractFile, TFolder, Vault } from 'obsidian';
+import { TAbstractFile, TFile, TFolder, Vault } from 'obsidian';
 
 let watcher: chokidar.FSWatcher | null = null;
 let watched_filepath: string | null = null;
 
+// Joins multiple path segments into a single normalized path.
+export function joinPaths(...paths: string[]): string {
+    return paths.join('/');
+}
 
 export function parseUri(url: string): ParsedUri | null {
     // Regular expression to capture the scheme, address, and optional query string
@@ -233,7 +237,26 @@ export function isInstanceOfFolder(file: TAbstractFile): file is TFolder {
     return file instanceof TFolder;
 }
 
-export function doesFolderExist(vault: Vault, relativePath: string): boolean {
-    const file: TAbstractFile | null = vault.getAbstractFileByPath(relativePath);
+export function isInstanceOfFile(file: TAbstractFile): file is TFile {
+    return file instanceof TFile;
+}
+
+export function doesFolderExist(vault: Vault, path: string): boolean {
+    const file: TAbstractFile | null = vault.getAbstractFileByPath(path);
     return !!file && isInstanceOfFolder(file);
+}
+
+export function doesFileExist(vault: Vault, relativePath: string): boolean {
+    const file: TAbstractFile | null = vault.getAbstractFileByPath(relativePath);
+    return !!file && isInstanceOfFile(file);
+}
+
+export async function createFolderIfNotExists(vault: Vault, folderPath: string) {
+    if(doesFolderExist(vault,folderPath)) return;
+
+    try {
+        await vault.createFolder(folderPath);
+    } catch (error) {
+        throw new Error(`Failed to create folder at ${folderPath}: ${error}`);
+    }
 }
