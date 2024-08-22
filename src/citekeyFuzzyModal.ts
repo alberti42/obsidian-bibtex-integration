@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-inferrable-types */
-import { App, FuzzyMatch, FuzzySuggestModal, Notice, Platform, TFile } from 'obsidian';
+import { App, FuzzyMatch, FuzzySuggestModal, normalizePath, Notice, Platform, TFile } from 'obsidian';
 
 import BibtexIntegration from 'main';
-import { BibTeXDict, BibTeXEntry, ParsedPath } from 'types';
+import { BibTeXEntry, ParsedPath } from 'types';
 import { createFolderIfNotExists, joinPaths, parseFilePath, resolveBookmark } from 'utils';
-import { getAuthors, getJournalReference } from 'bibtex_manager';
+import { BibtexManager, getJournalReference } from 'bibtex_manager';
 
 async function openBdskDocument(
             app:App,
@@ -19,7 +19,7 @@ async function openBdskDocument(
     
     const pdf_content = encodeURI(`x-bdsk://${citekey}?doc=${doc}`);
 
-    const pdf_filepath = joinPaths(pdf_folder,pdf_filename);
+    const pdf_filepath = normalizePath(joinPaths(pdf_folder,pdf_filename));
 
     let pdf_file_to_open = app.vault.getFileByPath(pdf_filepath);
     if (pdf_file_to_open instanceof TFile) {
@@ -58,7 +58,7 @@ async function openBdskDocument(
 }
 
 export class CitekeyFuzzyModal extends FuzzySuggestModal <BibTeXEntry> {
-	constructor(private plugin: BibtexIntegration, private bibtexEntries: BibTeXDict ) {
+	constructor(private plugin: BibtexIntegration, private bibtexManager:BibtexManager) {
         super(plugin.app);
 		this.setPlaceholder('Choose a paper to open...');
 		this.setInstructions(this.getInstructionsBasedOnOS());
@@ -105,14 +105,22 @@ export class CitekeyFuzzyModal extends FuzzySuggestModal <BibTeXEntry> {
             new Notice(error_msg);
             return;
         } else if (num_bdsk_files === 1) {
+
+            let folder_path;
+            if(this.plugin.settings.organize_by_years) {
+                folder_path = joinPaths(this.plugin.settings.pdf_folder,bibEntry.year ?? "unknown");
+            } else {
+                folder_path = this.plugin.settings.pdf_folder;
+            }
+
             openBdskDocument(
                 this.app,
-                joinPaths(this.plugin.settings.pdf_folder,bibEntry.year ?? "unknown"),
-                    validBdskFiles[0].base,
-                    bibEntry.citekey,
-                    1,
-                    shouldCreateNewLeaf
-                );
+                folder_path,
+                validBdskFiles[0].base,
+                bibEntry.citekey,
+                1,
+                shouldCreateNewLeaf
+            );
         } else {
             const modal = new PdfFileFuzzyModal(this.plugin, bibEntry, validBdskFiles);
             modal.open();
@@ -157,7 +165,7 @@ export class CitekeyFuzzyModal extends FuzzySuggestModal <BibTeXEntry> {
 		suggestionContainer.classList.add('bibtex-integration-suggestions');
 
         const authorsEl = document.createElement('div');
-        authorsEl.innerText = getAuthors(fuzzyMatch.item, {shortList:true, onlyLastName:true});
+        authorsEl.innerText = this.bibtexManager.getAuthors(fuzzyMatch.item.citekey, {shortList:true, onlyLastName:true});
         authorsEl.classList.add('bibtex-integration-authors');
 		
 		const titleEl = document.createElement('div');
@@ -191,7 +199,7 @@ export class CitekeyFuzzyModal extends FuzzySuggestModal <BibTeXEntry> {
 	}
 
 	getItems(): Array<BibTeXEntry> {
-		return Object.values(this.bibtexEntries);
+		return this.bibtexManager.getBibEntriesAsArray();
 	}
 
 	onChooseItem(selectedItem:BibTeXEntry, evt:MouseEvent|KeyboardEvent): void {
@@ -282,13 +290,21 @@ export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPath> {
 
     onChooseItem(selectedItem: ParsedPath, evt: MouseEvent | KeyboardEvent): void {
         const metaKeyPressed = evt.metaKey;
+
+        let folder_path;
+        if(this.plugin.settings.organize_by_years) {
+            folder_path = joinPaths(this.plugin.settings.pdf_folder,this.bibEntry.year ?? "unknown");
+        } else {
+            folder_path = this.plugin.settings.pdf_folder;
+        }
+
         openBdskDocument(
             this.app,
-            joinPaths(this.plugin.settings.pdf_folder,this.bibEntry.year ?? "unknown"),
-                selectedItem.base,
-                this.bibEntry.citekey,
-                this.files.findIndex(item => item === selectedItem) + 1, // we add +1 because of the indexing starting from 0
-                metaKeyPressed
-            );
+            folder_path,
+            selectedItem.base,
+            this.bibEntry.citekey,
+            this.files.findIndex(item => item === selectedItem) + 1, // we add +1 because of the indexing starting from 0
+            metaKeyPressed
+        );
     }
 }

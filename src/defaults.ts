@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS: BibtexIntegrationSettings = {
     debug_parser: false,
     widthRecentList: 1000,
     pdf_folder: '/',
+    organize_by_years: true,
 }
 
 export const AuthorOptionsDefault: AuthorOptions = {

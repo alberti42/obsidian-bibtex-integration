@@ -68,8 +68,8 @@ export default class BibtexIntegration extends Plugin {
         });
 
         this.addCommand({
-            id: 'open-pdf-from-bibtex-entry',
-            name: 'Open PDF file of BibTex entry',
+            id: 'open-pdf-from-bibtex-library',
+            name: 'Open paper from BibTex library',
             callback: () => {
                 if(this.bibtexManager) this.bibtexManager.showBibtexEntriesModal();
             }
@@ -350,6 +350,34 @@ class BibtexIntegrationSettingTab extends PluginSettingTab {
                     this.plugin.saveSettings();
                 });
         });
+
+        const organize_by_years_setting = new Setting(containerEl)
+            .setName('Organize the PDF placeholders by years')
+            .setDesc('If this option is enabled, the placeholders are stored in subfolders named by the year of the publication.');
+
+        let organize_by_years_toggle: ToggleComponent;
+        organize_by_years_setting.addToggle(toggle => {
+            organize_by_years_toggle = toggle;
+            toggle
+            .setValue(this.plugin.settings.organize_by_years)
+            .onChange(async (value: boolean) => {
+                this.plugin.settings.organize_by_years = value;
+                this.plugin.saveSettings();
+            })
+        });
+
+        organize_by_years_setting.addExtraButton((button) => {
+            button
+                .setIcon("reset")
+                .setTooltip("Reset to default value")
+                .onClick(() => {
+                    const value = DEFAULT_SETTINGS.organize_by_years;
+                    organize_by_years_toggle.setValue(DEFAULT_SETTINGS.organize_by_years);
+                    this.plugin.settings.organize_by_years = value;
+                    this.plugin.saveSettings();
+                });
+        });
+
 
 
     }

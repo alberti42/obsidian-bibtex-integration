@@ -26,10 +26,17 @@ export interface ParserOptions {
     debug_parser: boolean;
 }
 
+
 export interface BibTeXEntry {
     citekey: string;
     type: string;
     [key: string]: string;   // The fields within the entry (e.g., "author", "title", "year", etc.)
+}
+
+export type ParsedAuthor = [firstName:string, lastName:string]
+export type ParsedAuthors = ParsedAuthor[];
+export interface ParsedAuthorsDict {
+    [key:string]: ParsedAuthors;
 }
 
 export interface BibtexIntegrationSettings {
@@ -38,6 +45,7 @@ export interface BibtexIntegrationSettings {
     debug_parser: boolean;
     widthRecentList: number;
     pdf_folder: string;
+    organize_by_years: boolean;
 }
 
 export interface Bookmark {
