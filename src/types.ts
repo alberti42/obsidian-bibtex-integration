@@ -27,6 +27,8 @@ export interface ParserOptions {
 }
 
 export interface BibTeXEntry {
+    citekey: string;
+    type: string;
     [key: string]: string;   // The fields within the entry (e.g., "author", "title", "year", etc.)
 }
 

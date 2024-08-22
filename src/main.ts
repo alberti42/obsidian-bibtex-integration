@@ -6,12 +6,11 @@ import { App, FileSystemAdapter, Plugin, PluginManifest, PluginSettingTab, Setti
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { BibtexIntegrationSettings, ParserWorkerReply } from 'types';
+import { BibtexIntegrationSettings, ParserOptions, ParserWorkerInputs, ParserWorkerReply } from 'types';
 import { parseBdskUrl, posixToFileURL, resolveBookmark, unwatchFile, watchFile } from 'utils';
 
 import LoadWorker from 'web-worker:./bibtex.worker';
 import { WorkerManager } from 'worker_manager';
-// import { CitekeyFuzzyModal } from 'citekeyFuzzyModal';
 import { DEFAULT_SETTINGS } from 'defaults';
 
 export default class BibtexIntegration extends Plugin {
@@ -67,10 +66,9 @@ export default class BibtexIntegration extends Plugin {
             id: 'open-pdf-from-bibtex-entry',
             name: 'Open PDF file of BibTex entry',
             callback: () => {
-                this.showBibtexEntriesModal();
+                if(this.bibtexManager) this.bibtexManager.showBibtexEntriesModal();
             }
         });
-
 
         if(this.settings.import_delay_ms>0) {
             setTimeout(() => {
@@ -85,18 +83,11 @@ export default class BibtexIntegration extends Plugin {
         (this.app.plugins.plugins[this.manifest.id] as any).getFilepathForCitekey = this.getUrlForCitekey.bind(this);
     }
 
-    async showBibtexEntriesModal() {
-        
-        // const results = [{citekey: "Hello", test:"dsds"},{citekey: "World", test:"htghg"},{citekey: "Finished", test:"dfgf"}]
-        // const modal = new CitekeyFuzzyModal(this.app, this, results);
-        // modal.open();
-    }
-
     async parseBibtexFile() {
-        let bibtexData: string;
+        let bibtex_data: string;
         try {
             const t0 = Date.now();
-            bibtexData = await this.readBibFile();
+            bibtex_data = await this.readBibFile();
             const t1 = Date.now();
             if (this.settings.debug_parser) console.log("BibTex file loaded in " + (t1 - t0) + " milliseconds.");
         } catch {
@@ -106,9 +97,10 @@ export default class BibtexIntegration extends Plugin {
 
         watchFile(this.settings.bibtex_filepath,this);
         
-        const bibEntries = await this.bibtexParserWorker.post<ParserWorkerReply>({bibtexData, debug_parser: this.settings.debug_parser});
+        const parserOptions:ParserOptions = {debug_parser: this.settings.debug_parser};
+        const bibEntries = await this.bibtexParserWorker.post<ParserWorkerReply,ParserWorkerInputs>({bibtex_data, options: parserOptions});
         if(bibEntries) {
-            this.bibtexManager = new BibtexManager(bibEntries);
+            this.bibtexManager = new BibtexManager(this,bibEntries);
         } else {
             this.bibtexManager = null;
         }     

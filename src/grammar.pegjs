@@ -7,7 +7,7 @@
 }
 
 main
-  = blocks:block* { return blocks.filter((item) => item)}
+  = blocks:block* // { return blocks.filter((item) => item)}
   
 block
   = bibentry / empty_lines / comment / loose_line
@@ -18,12 +18,13 @@ empty_lines
 bibentry
   = "@" type:$([^ {]*) empty_chars "{" empty_chars citekey:$[^ ,]+ empty_chars "," empty_chars f:fields "}" empty_chars {
 
-    f.type = type;
     const entries = f.reduce((acc, current) => {
       acc[current[0]] = current[1];
       return acc;
     }, {});
-
+    entries.citekey = citekey;
+    entries.type = type;
+    
     // If max matches reached, throw the error and capture the position
     if (count++ >= maxMatches) {
       throw new MaxMatchesReachedError("Reached max matches", location()); // Pass last location with the error

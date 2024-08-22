@@ -1,5 +1,6 @@
 // bibtex_parser.ts
 
+import { off } from "process";
 import { parse } from "./peggy.mjs"
 import { BibTeXDict, MaxMatchesReachedError, ParserWorkerInputs } from 'types';
 

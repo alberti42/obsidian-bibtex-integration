@@ -69,4 +69,22 @@ declare module "obsidian" {
         textInputEl: HTMLInputElement;
     }
 
+    interface Chooser<T> {
+        values: T[];
+        selectedItem: number;
+        useSelectedItem: (event?: KeyboardEvent) => void;
+        setSuggestions: (items: T[]) => void;
+    }
+
+    interface FuzzySuggestModal<T> {
+        chooser: Chooser<T>;
+        containerEl: HTMLDivElement;
+        selectedItem: number;
+        suggestions: HTMLDivElement[];
+        moveDown: () => void;
+        moveUp: () => void;
+        setSelectedItem: (index: number, scroll?: boolean) => void;
+        setSuggestions: (items: T[]) => void;
+        useSelectedItem: (event?: KeyboardEvent) => void;
+    }
 }
