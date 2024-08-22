@@ -1,11 +1,10 @@
 // bibtex_manager.ts
 
-import { AuthorOptions, BibTeXDict, BibTeXEntry, ParserOptions, Queries } from "types";
+import { AuthorOptions, BibTeXDict, BibTeXEntry, JournalReferenceOptions, ParserOptions, Queries } from "types";
 import { CitekeyFuzzyModal } from "citekeyFuzzyModal";
 import { parseUri, posixToFileURL, resolveBookmark } from "utils"
-import { AuthorOptionsDefault } from "defaults"
+import { AuthorOptionsDefault, JournalReferenceOptionDefault } from "defaults"
 import BibtexIntegration from "main";
-import * as path from "path";
 
 function processTitles(bibEntriesArray:BibTeXEntry[]) {
     bibEntriesArray.forEach((item:BibTeXEntry) => {
@@ -54,18 +53,45 @@ export function getAuthors(bibEntry: BibTeXEntry, options: AuthorOptions = Autho
     }   
 }
 
+export function getJournalReference(bibEntry: BibTeXEntry, options: JournalReferenceOptions = JournalReferenceOptionDefault) {
+
+    const journal = bibEntry.journal ?? "";
+
+    const eprint = bibEntry.eprint;
+
+    const isArxiv = journal.trim().toLowerCase() === 'arxiv' && eprint;
+
+    let journal_vol_page;
+    if(isArxiv) {
+        journal_vol_page = `${journal}:${eprint}`;
+    } else {
+        let volume;
+        if(options.highlightVolume) {
+            volume = `<strong>${bibEntry.volume}</strong>` ?? ""
+        } else {
+            volume = bibEntry.volume ?? ""
+        }
+        const page = bibEntry.page ?? "";
+        const bothVolPage = [volume,page].join(',')
+        journal_vol_page = [journal,bothVolPage].join(' ');
+    }
+    
+    const year = `(${bibEntry.year})` ?? "";
+
+    const journalRef = [journal_vol_page,year].join(' ');
+
+    return journalRef;
+}
+
 export class BibtexManager {
     private bibEntries: BibTeXDict = {};
     private parserOptions:ParserOptions;
-    private bookmark_resolver_path;
-
+    
     constructor(private plugin: BibtexIntegration) {
 
         this.parserOptions = {
             debug_parser: plugin.settings.debug_parser
         };
-
-        this.bookmark_resolver_path = path.join(this.plugin.getPluginPath(),"bookmark_resolver");
     }
 
     async parseBibtexData(bibtex_data: string) {
@@ -129,7 +155,7 @@ export class BibtexManager {
         const bibEntry = this.getBibEntry(citekey);
         if(bibEntry) {
             // Path to the bookmark resolver utility
-            const filepath = await resolveBookmark(this.bookmark_resolver_path,bibEntry,`bdsk-file-${doc}`);
+            const filepath = await resolveBookmark(bibEntry,`bdsk-file-${doc}`);
             if(filepath) {
                 return posixToFileURL(filepath);
             } else {

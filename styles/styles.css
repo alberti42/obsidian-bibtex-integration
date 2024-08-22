@@ -1,2 +1,37 @@
 /* styles.css */
 
+.bibtex-integration-suggestions {
+    display: flex;
+    justify-content: space-between; /* Distribute space between items */
+    align-items: center; /* Align items vertically */
+    padding: var(--size-4-1) var(--size-4-2);
+    margin-bottom: var(--size-4-1);
+    gap: var(--size-4-3); /* Add space between columns */
+}
+
+.bibtex-integration-suggestions div {
+    white-space: nowrap; /* Prevent text from wrapping */
+    overflow: hidden; /* Hide overflow if text is too long */
+}
+
+.bibtex-integration-authors {
+    flex: 0 0 10%; /* Fixed 20% width for authors */
+    text-overflow: ellipsis; /* Show ellipsis for overflowed text */
+}
+
+.bibtex-integration-title {
+    flex: 0 0 55%; /* Fixed 40% width for title */
+    font-weight: var(--font-semibold);
+    text-overflow: ellipsis; /* Show ellipsis for overflowed text */
+}
+
+.bibtex-integration-jref {
+    flex: 1 1 auto; /* Allow journal reference to grow/shrink dynamically */
+    text-align: left; /* Align journal reference to the left */
+    text-overflow: ellipsis; /* Show ellipsis for overflowed text */
+}
+
+.bibtex-integration-citekey {
+    flex: 1 1 auto; /* Allow citekey to grow/shrink dynamically */
+    text-align: right; /* Align citekey to the right */
+}

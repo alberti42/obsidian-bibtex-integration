@@ -56,6 +56,14 @@ export function isBookmark(obj:unknown): obj is Bookmark {
     }
 }
 
+export interface ParsedPath {
+    dir: string,
+    base: string,
+    filename: string,
+    ext: string,
+    path: string
+}
+
 export interface ParsedUri {
     scheme: string;
     address: string;
@@ -71,4 +79,9 @@ export interface Queries {
 export interface AuthorOptions {
     shortList: boolean,
     onlyLastName: boolean,
+}
+
+export interface JournalReferenceOptions {
+    includingYear: boolean,
+    highlightVolume: true,
 }

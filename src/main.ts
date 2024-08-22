@@ -9,7 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { BibtexIntegrationSettings, ParserWorkerInputs, ParserWorkerReply } from 'types';
-import { unwatchFile, watchFile, doesFolderExist } from 'utils';
+import { unwatchFile, watchFile, doesFolderExist, joinPaths, set_bookmark_resolver_path } from 'utils';
 
 import LoadWorker from 'web-worker:./bibtex.worker';
 import { WorkerManager } from 'worker_manager';
@@ -17,10 +17,6 @@ import { DEFAULT_SETTINGS } from 'defaults';
 
 export default class BibtexIntegration extends Plugin {
     settings: BibtexIntegrationSettings = DEFAULT_SETTINGS;
-
-    private vaultPath: string;
-    private pluginsPath: string;
-    private pluginPath: string;
 
     private pdf_plus_plugin: PdfPlusPlugin | null = null;
     
@@ -41,23 +37,21 @@ export default class BibtexIntegration extends Plugin {
         }
 
         // Path to vault
-        this.vaultPath = adapter.getBasePath();
+        const vaultPath = adapter.getBasePath();
 
         // Path to plugins folder
-        this.pluginsPath = path.join(this.vaultPath,app.plugins.getPluginFolder());
+        const pluginsPath = path.join(vaultPath,app.plugins.getPluginFolder());
 
         // Path to this plugin folder in the vault
-        this.pluginPath = path.join(this.pluginsPath,manifest.id);
+        const pluginPath = path.join(pluginsPath,manifest.id);
+
+        set_bookmark_resolver_path(joinPaths(pluginPath,"bookmark_resolver"));
     }
 
     getParserWorker() {
         return this.bibtexParserWorker;
     }
     
-    getPluginPath() {
-        return this.pluginPath;
-    }
-
     async onload() {
         await this.loadSettings();
 
@@ -88,11 +82,7 @@ export default class BibtexIntegration extends Plugin {
         } else {
             this.parseBibtexFile();
         }
-                
-         // Expose the method for external use
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (this.app.plugins.plugins[this.manifest.id] as any).getFilepathForCitekey = this.getPdfUrlFromUrl.bind(this);
-
+        
         this.app.workspace.onLayoutReady(() => {
             // Wait that all plugins have been loaded to apply the monkey-patch
             this.monkey_patch_PDF_plus();
@@ -123,12 +113,17 @@ export default class BibtexIntegration extends Plugin {
                     const content = (await this.app.vault.read(file)).trim();
 
                     if (content.startsWith('x-bdsk://')) {
-                        const url = await self.getPdfUrlFromUrl(content);
-                        if(url) {
-                            return Platform.resourcePathPrefix + url.substring(8);
+                        if(self.bibtexManager) {
+                            const url = await self.bibtexManager.getPdfUrlFromUrl(content);
+                            if(url) {
+                                return Platform.resourcePathPrefix + url.substring(8);
+                            } else {
+                                console.error("Error:", `could not resolve url: ${content}`);
+                                return null;
+                            }
                         } else {
-                            console.error("Error:", `could not resolve url: ${content}`);
-                            return null;
+                            console.error("Error:", "BibTex parser not initialized correctly");
+                            return null;    
                         }
                     }
 
@@ -163,16 +158,6 @@ export default class BibtexIntegration extends Plugin {
         this.bibtexManager = new BibtexManager(this);
 
         this.bibtexManager.parseBibtexData(bibtex_data);
-    }
-
-    // Public method to set citation key and trigger command
-    public async getPdfUrlFromUrl(url: string): Promise<string | null> {
-        if(this.bibtexManager) {
-            return await this.bibtexManager.getPdfUrlFromUrl(url);
-        } else {
-            console.error("Error:", "BibTex parser not initialized correctly");
-            return null;    
-        }
     }
 
     // Function to read the .bib file and return its contents

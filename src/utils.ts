@@ -2,9 +2,8 @@
 
 import * as bplist from 'bplist-parser';
 import { spawn } from 'child_process';
-import * as path from 'path';
 import { promises as fs } from 'fs';
-import { BibTeXEntry, isBookmark, ParsedUri, Queries } from 'types';
+import { BibTeXEntry, isBookmark, ParsedPath, ParsedUri, Queries } from 'types';
 import { pathToFileURL } from 'url';
 import * as chokidar from 'chokidar'; // to watch for file changes
 import BibtexIntegration from 'main';
@@ -13,9 +12,27 @@ import { TAbstractFile, TFile, TFolder, Vault } from 'obsidian';
 let watcher: chokidar.FSWatcher | null = null;
 let watched_filepath: string | null = null;
 
+export let bookmark_resolver_path = "";
+
+export function set_bookmark_resolver_path(path: string) {
+    bookmark_resolver_path = path;
+}
+
 // Joins multiple path segments into a single normalized path.
 export function joinPaths(...paths: string[]): string {
     return paths.join('/');
+}
+
+export function parseFilePath(filePath: string): ParsedPath {
+    const lastSlashIndex = filePath.lastIndexOf('/');
+
+    const dir = lastSlashIndex !== -1 ? filePath.substring(0, lastSlashIndex) : '';
+    const base = lastSlashIndex !== -1 ? filePath.substring(lastSlashIndex + 1) : filePath;
+    const extIndex = base.lastIndexOf('.');
+    const filename = extIndex !== -1 ? base.substring(0, extIndex) : base;
+    const ext = extIndex !== -1 ? base.substring(extIndex) : '';
+
+    return { dir, base, filename, ext, path: filePath };
 }
 
 export function parseUri(url: string): ParsedUri | null {
@@ -49,8 +66,7 @@ export function parseUri(url: string): ParsedUri | null {
 
 // Convert a POSIX file path to a file URL with proper escaping
 export function posixToFileURL(posixPath: string): string {
-    const absolutePath = path.resolve(posixPath); // Ensure the path is absolute
-    const fileUrl = pathToFileURL(absolutePath);
+    const fileUrl = pathToFileURL(posixPath);
     return fileUrl.href; // Return the properly escaped file URL as a string
 }
 
@@ -104,7 +120,7 @@ export async function fileExists(path:string) {
 }
 
 // Function to resolve bookmark using the Swift command-line tool with Base64 piping
-export function run_bookmark_resolver(bookmark_resolver_path: string, base64Bookmark: string): Promise<string> {
+export function run_bookmark_resolver(base64Bookmark: string): Promise<string> {
     return new Promise((resolve, reject) => {
         // Use fileExists as a promise and chain the actions using .then()
         fileExists(bookmark_resolver_path).then((exists) => {
@@ -163,7 +179,7 @@ export function run_bookmark_resolver(bookmark_resolver_path: string, base64Book
 }
 
 
-export async function resolveBookmark(bookmark_resolver_path:string, bibEntry: BibTeXEntry, bdsk_file: string): Promise<string|null> {
+export async function resolveBookmark(bibEntry: BibTeXEntry, bdsk_file: string): Promise<string|null> {
     try {
         // Convert Base64 to binary data
         const binaryData = base64ToUint8Array(bibEntry[bdsk_file]);
@@ -175,7 +191,7 @@ export async function resolveBookmark(bookmark_resolver_path:string, bibEntry: B
                 console.error('Error:', 'not valid bookmark');
                 return null;
             }
-            return await run_bookmark_resolver(bookmark_resolver_path, uint8ArrayToBase64(plistData.bookmark));
+            return await run_bookmark_resolver(uint8ArrayToBase64(plistData.bookmark));
             // return await run_bookmark_resolver(bookmark_resolver_path, uint8ArrayToBase64(plistData.bookmark));
         } else {
             console.error('Error:', 'not valid plist in bibtex field bdsk-file');
