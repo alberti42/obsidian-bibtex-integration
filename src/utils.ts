@@ -8,6 +8,7 @@ import { BibTeXEntry, isBookmark, ParsedUri, Queries } from 'types';
 import { pathToFileURL } from 'url';
 import * as chokidar from 'chokidar'; // to watch for file changes
 import BibtexIntegration from 'main';
+import { TAbstractFile, TFolder, Vault } from 'obsidian';
 
 let watcher: chokidar.FSWatcher | null = null;
 let watched_filepath: string | null = null;
@@ -228,3 +229,11 @@ export async function unwatchFile() {
     } 
 }
 
+export function isInstanceOfFolder(file: TAbstractFile): file is TFolder {
+    return file instanceof TFolder;
+}
+
+export function doesFolderExist(vault: Vault, relativePath: string): boolean {
+    const file: TAbstractFile | null = vault.getAbstractFileByPath(relativePath);
+    return !!file && isInstanceOfFolder(file);
+}

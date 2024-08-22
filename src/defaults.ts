@@ -7,4 +7,5 @@ export const DEFAULT_SETTINGS: BibtexIntegrationSettings = {
     import_delay_ms: 1000,
     debug_parser: false,
     widthRecentList: 1000,
+    pdf_folder: '/',
 }

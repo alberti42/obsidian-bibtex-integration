@@ -86,6 +86,10 @@ export class BibtexManager {
     async getPdfUrlFromBibDeskUri(address: string, queries: Queries): Promise<string | null> {
         const citekey = address;
         const doc = parseInt(queries.doc ?? "1", 10); // Parse the doc number as an integer
+        if(isNaN(doc)) {
+            console.error("Error:","provided non-integer document number:", queries.doc);
+            return null;
+        }
 
         const bibEntry = this.getBibEntry(citekey);
         if(bibEntry) {

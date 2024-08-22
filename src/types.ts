@@ -37,6 +37,7 @@ export interface BibtexIntegrationSettings {
     import_delay_ms: number;
     debug_parser: boolean;
     widthRecentList: number;
+    pdf_folder: string;
 }
 
 export interface Bookmark {

@@ -7,7 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { BibtexIntegrationSettings, ParserWorkerInputs, ParserWorkerReply } from 'types';
-import { unwatchFile, watchFile } from 'utils';
+import { unwatchFile, watchFile, doesFolderExist } from 'utils';
 
 import LoadWorker from 'web-worker:./bibtex.worker';
 import { WorkerManager } from 'worker_manager';
@@ -169,7 +169,8 @@ class BibtexIntegrationSettingTab extends PluginSettingTab {
 
         const bibtex_filepath_setting = new Setting(containerEl)
             .setName('BibTex file')
-            .setDesc('Filename including path to the BibTex file to be imported');
+            .setDesc('Full path of the BibTex file to be imported. Note: this is the absolute path on \
+                    your computer and is not referred to the vault.');
 
         let bibtex_filepath_text:TextComponent;
         bibtex_filepath_setting.addText(text => {
@@ -266,6 +267,49 @@ class BibtexIntegrationSettingTab extends PluginSettingTab {
                     this.plugin.saveSettings();
                 });
         });
+
+        new Setting(containerEl).setName('Library in the vault').setHeading();
+
+        const pdf_folder_setting = new Setting(containerEl)
+            .setName('Folder containg PDF++ placeholders')
+            .setDesc('A folder in your vault containing the placeholders from PDF++ (e.g.: "00 Meta/PDF++")');
+
+        let pdf_folder_text:TextComponent;
+        pdf_folder_setting.addText(text => {
+                pdf_folder_text = text;
+                const warningEl = containerEl.createEl('div', { cls: 'mod-warning' });
+                warningEl.style.display = 'none';  // Initially hide the warning
+                return text
+                    .setPlaceholder('E.g.: 00 Meta/PDF++')
+                    .setValue(this.plugin.settings.pdf_folder)
+                    .onChange(async (value) => {
+                        // Remove any previous warning text
+                        warningEl.textContent = '';
+                        if (!doesFolderExist(this.app.vault,value)) {
+                            warningEl.textContent = 'Please enter the path of an existing folder in your vault.';
+                            warningEl.style.display = 'block';
+                        } else {
+                            // Hide the warning and save the valid value
+                            warningEl.style.display = 'none';
+                            this.plugin.settings.pdf_folder = value;
+                            await this.plugin.saveSettings();
+                        }
+                    });
+            });
+
+        pdf_folder_setting.addExtraButton((button) => {
+            button
+                .setIcon("reset")
+                .setTooltip("Reset to default value")
+                .onClick(() => {
+                    const value = DEFAULT_SETTINGS.pdf_folder;
+                    pdf_folder_text.setValue(value);
+                    this.plugin.settings.pdf_folder = value;
+                    this.plugin.saveSettings();
+                });
+        });
+
+
     }
 
      hide(): void {
