@@ -116,6 +116,7 @@ abstract class BibEntriesFuzzyModal extends FuzzySuggestModal <BibTeXEntry> {
 	}
 
 	private handleKeyDown = (evt: KeyboardEvent) => {
+        evt.preventDefault();  // Prevent default behavior of inserting a new line
 		// evt.isComposing determines whether the event is part of a key composition
 		if (evt.key === 'Enter' && !evt.isComposing) {
 			this.chooser.useSelectedItem(evt);
@@ -373,6 +374,7 @@ export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPathWithIndex> {
     }
 
     private handleKeyDown = (evt: KeyboardEvent) => {
+        evt.preventDefault();  // Prevent default behavior of inserting a new line
         // evt.isComposing determines whether the event is part of a key composition
         if (evt.key === 'Enter' && !evt.isComposing && evt.altKey) {
             this.chooser.useSelectedItem(evt);
