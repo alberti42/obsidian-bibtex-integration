@@ -14,7 +14,7 @@ import { unwatchFile, watchFile, doesFolderExist, joinPaths, set_bookmark_resolv
 import LoadWorker from 'web-worker:./bibtex.worker';
 import { WorkerManager } from 'worker_manager';
 import { DEFAULT_SETTINGS } from 'defaults';
-import { CiteFuzzyModal, OpenPdfFuzzyModal } from 'citekeyFuzzyModal';
+import { InsertCitationFuzzyModal, InsertCitekeyFuzzyModal, OpenPdfFuzzyModal } from 'citekeyFuzzyModal';
 
 export default class BibtexIntegration extends Plugin {
     settings: BibtexIntegrationSettings = DEFAULT_SETTINGS;
@@ -72,7 +72,7 @@ export default class BibtexIntegration extends Plugin {
 
         this.addCommand({
             id: 'open-pdf-from-bibtex-library',
-            name: 'Open paper from BibTex library',
+            name: 'Open a PDF paper that is contained in the BibTex library',
             callback: () => {
                 if(this.bibtexManager) {
                     const modal = new OpenPdfFuzzyModal(this, this.bibtexManager);
@@ -83,10 +83,21 @@ export default class BibtexIntegration extends Plugin {
 
         this.addCommand({
             id: 'cite-paper-from-bibtex-library',
-            name: 'Cite paper from BibTex library',
+            name: 'Insert citation to a paper that is contained in the BibTex library',
             callback: () => {
                 if(this.bibtexManager) {
-                    const modal = new CiteFuzzyModal(this, this.bibtexManager);
+                    const modal = new InsertCitationFuzzyModal(this, this.bibtexManager);
+                    modal.open();
+                }
+            }
+        });
+
+        this.addCommand({
+            id: 'citekey-from-bibtex-library',
+            name: 'Insert citekey of a paper that is contained in the BibTex library',
+            callback: () => {
+                if(this.bibtexManager) {
+                    const modal = new InsertCitekeyFuzzyModal(this, this.bibtexManager);
                     modal.open();
                 }
             }

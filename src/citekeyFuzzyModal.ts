@@ -6,7 +6,7 @@ import { App, FuzzyMatch, FuzzySuggestModal, MarkdownView, normalizePath, Notice
 import BibtexIntegration from 'main';
 import { BibTeXEntry, HighlightType, ParsedPath } from 'types';
 import { createFolderIfNotExists, joinPaths, parseFilePath, resolveBookmark } from 'utils';
-import { BibtexManager, getAuthors, getJournalReference, getTitle } from 'bibtex_manager';
+import { BibtexManager, getBibDeskUriLink, getFormattedAuthors, getFormattedJournalReference, getFormattedTitle } from 'bibtex_manager';
 
 async function openBdskDocument(
             app:App,
@@ -117,7 +117,7 @@ abstract class BibEntriesFuzzyModal extends FuzzySuggestModal <BibTeXEntry> {
 
 	private handleKeyDown = (evt: KeyboardEvent) => {
 		// evt.isComposing determines whether the event is part of a key composition
-		if (evt.key === 'Enter' && !evt.isComposing && evt.altKey) {
+		if (evt.key === 'Enter' && !evt.isComposing) {
 			this.chooser.useSelectedItem(evt);
 		}
 	}
@@ -135,7 +135,7 @@ abstract class BibEntriesFuzzyModal extends FuzzySuggestModal <BibTeXEntry> {
         }
         return [item.citekey,getTitle(item),authors_str].join(' ');
         */
-		return [item.citekey,getTitle(item)].join(' ');
+		return [item.citekey,getFormattedTitle(item)].join(' ');
 	}
 
 	renderSuggestion(fuzzyMatch: FuzzyMatch<BibTeXEntry>, el: HTMLElement) {
@@ -145,15 +145,15 @@ abstract class BibEntriesFuzzyModal extends FuzzySuggestModal <BibTeXEntry> {
 		suggestionContainer.classList.add('bibtex-integration-suggestions');
 
         const authorsEl = document.createElement('div');
-        authorsEl.innerText = getAuthors(fuzzyMatch.item, {shortList:true, onlyLastName:true});
+        authorsEl.innerText = getFormattedAuthors(fuzzyMatch.item, {shortList:true, onlyLastName:true});
         authorsEl.classList.add('bibtex-integration-authors');
 		
 		const titleEl = document.createElement('div');
-        titleEl.innerText = getTitle(fuzzyMatch.item);
+        titleEl.innerText = getFormattedTitle(fuzzyMatch.item);
         titleEl.classList.add('bibtex-integration-title');
 
         const journalRefEl = document.createElement('div');
-        journalRefEl.innerHTML = getJournalReference(fuzzyMatch.item, {includingYear:true, highlightVolume: HighlightType.HTML});
+        journalRefEl.innerHTML = getFormattedJournalReference(fuzzyMatch.item, {includingYear:true, highlightVolume: HighlightType.HTML});
         journalRefEl.classList.add('bibtex-integration-jref');
 
         const citekeyEl = document.createElement('div');
@@ -199,9 +199,9 @@ export class OpenPdfFuzzyModal extends BibEntriesFuzzyModal {
             altSymbol = 'Alt';
         }
         return [
-            { command: '↑↓', purpose: 'to navigate' },
-            { command: "↵", purpose: "to open the selected paper" },
-            { command: altSymbol+'+↵', purpose: 'to open in a new tab' },
+            { command: '↑↓', purpose: 'navigate' },
+            { command: "↵", purpose: "open the selected paper" },
+            { command: altSymbol, purpose: 'open it in a new tab' },
             { command: 'esc', purpose: 'to dismiss' },
         ];
     }
@@ -252,18 +252,19 @@ export class OpenPdfFuzzyModal extends BibEntriesFuzzyModal {
     }
 
     onChooseItem(selectedItem:BibTeXEntry, evt:MouseEvent|KeyboardEvent): void {
-        const altKeyPressed = evt.altKey;
-        this.openDocumentForBibEntry(selectedItem, altKeyPressed);
+        const shouldCreateNewLeaf = evt.altKey;
+        this.openDocumentForBibEntry(selectedItem, shouldCreateNewLeaf);
     }
 }
 
-export class CiteFuzzyModal extends BibEntriesFuzzyModal {
+export class InsertCitationFuzzyModal extends BibEntriesFuzzyModal {
     constructor(plugin: BibtexIntegration, bibtexManager:BibtexManager) {
         super(plugin,bibtexManager);
         this.setPlaceholder('Choose a paper to cite...');
     }
 
     getInstructionsBasedOnOS(): { command: string, purpose: string } [] {
+        const shiftSymbol = '⇧';
         let altSymbol;
         if (Platform.isMacOS) {
             altSymbol = '⌥';
@@ -271,25 +272,61 @@ export class CiteFuzzyModal extends BibEntriesFuzzyModal {
             altSymbol = 'Alt';
         }
         return [
-            { command: '↑↓', purpose: 'to navigate' },
-            { command: "↵", purpose: "to cite (long form)" },
-            { command: altSymbol+'+↵', purpose: 'to cite (short form)' },
-            { command: 'esc', purpose: 'to dismiss' },
+            { command: '↑↓', purpose: 'navigate' },
+            { command: "↵", purpose: "full citation" },
+            { command: altSymbol, purpose: 'short citation' },
+            { command: shiftSymbol, purpose: 'include BibDesk URI' },
+            { command: 'esc', purpose: 'dismiss' },
         ];
     }
     
-    insertCitation(bibEntry:BibTeXEntry,shortCitation:boolean) {
-        const authors = getAuthors(bibEntry, {shortList:shortCitation, onlyLastName:false});
-        const journalRef = getJournalReference(bibEntry, {includingYear:true, highlightVolume: HighlightType.MarkDown});
-        const title = getTitle(bibEntry);
+    insertCitation(bibEntry:BibTeXEntry,shortCitation:boolean,addBibDeskUri:boolean) {
+        const authors = getFormattedAuthors(bibEntry, {shortList:shortCitation, onlyLastName:false});
+        const journalRef = getFormattedJournalReference(bibEntry, {includingYear:true, highlightVolume: HighlightType.MarkDown});
+        const title = getFormattedTitle(bibEntry);
         
-        const citation = [authors, [title, journalRef].join(' ')].join(', ');
+        let citation = [authors, [title, journalRef].join(' ')].join(', ');
+
+        if(addBibDeskUri) {
+            const BibDeskUri = getBibDeskUriLink(bibEntry);
+            citation = [citation,BibDeskUri].join('; ');
+        }
+        
         insertTextAtCursor(this.plugin.app,citation);
     }
 
     onChooseItem(selectedItem:BibTeXEntry, evt:MouseEvent|KeyboardEvent): void {
-        const altKeyPressed = evt.altKey;
-        this.insertCitation(selectedItem, altKeyPressed);
+        const shortCitation = evt.altKey;
+        const addBibDeskUri = evt.shiftKey;
+        this.insertCitation(selectedItem, shortCitation,addBibDeskUri);
+    }
+}
+
+export class InsertCitekeyFuzzyModal extends BibEntriesFuzzyModal {
+    constructor(plugin: BibtexIntegration, bibtexManager:BibtexManager) {
+        super(plugin,bibtexManager);
+        this.setPlaceholder('Choose a paper to cite...');
+    }
+
+    getInstructionsBasedOnOS(): { command: string, purpose: string } [] {
+        const shiftSymbol = '⇧';
+        return [
+            { command: '↑↓', purpose: 'navigate' },
+            { command: "↵", purpose: "citekey as a simple string" },
+            { command: shiftSymbol, purpose: 'citekey as a BibDesk URI' },
+            { command: 'esc', purpose: 'dismiss' },
+        ];
+    }
+    
+    insertCitation(bibEntry:BibTeXEntry,citeKeyAsUri:boolean) {
+        const citeKey = citeKeyAsUri ? getBibDeskUriLink(bibEntry) : bibEntry.citekey;
+        
+        insertTextAtCursor(this.plugin.app,citeKey);
+    }
+
+    onChooseItem(selectedItem:BibTeXEntry, evt:MouseEvent|KeyboardEvent): void {
+        const citeKeyAsUri = evt.shiftKey;
+        this.insertCitation(selectedItem, citeKeyAsUri);
     }
 }
 
@@ -308,10 +345,10 @@ export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPath> {
             altSymbol = 'Alt';
         }
         return [
-            { command: '↑↓', purpose: 'to navigate' },
-            { command: "↵", purpose: "to open the selected file" },
-            { command: altSymbol+'+↵', purpose: 'to open in a new tab' },
-            { command: 'esc', purpose: 'to dismiss' },
+            { command: '↑↓', purpose: 'navigate' },
+            { command: "↵", purpose: 'open the selected PDF file' },
+            { command: altSymbol, purpose: 'open it in a new tab' },
+            { command: 'esc', purpose: 'dismiss' },
         ];
     }
 
@@ -371,7 +408,7 @@ export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPath> {
     }
 
     onChooseItem(selectedItem: ParsedPath, evt: MouseEvent | KeyboardEvent): void {
-        const altKeyPressed = evt.altKey;
+        const shouldCreateNewLeaf = evt.altKey;
 
         let folder_path;
         if(this.plugin.settings.organize_by_years) {
@@ -386,7 +423,7 @@ export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPath> {
             selectedItem.base,
             this.bibEntry.citekey,
             this.files.findIndex(item => item === selectedItem) + 1, // we add +1 because of the indexing starting from 0
-            altKeyPressed
+            shouldCreateNewLeaf
         );
     }
 }

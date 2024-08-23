@@ -40,7 +40,7 @@ function parseAuthors(bibEntriesArray:BibTeXEntry[]) {
     });    
 }
 
-export function getJournalReference(bibEntry: BibTeXEntry, options: JournalReferenceOptions = JournalReferenceOptionDefault) {
+export function getFormattedJournalReference(bibEntry: BibTeXEntry, options: JournalReferenceOptions = JournalReferenceOptionDefault) {
 
     const journal = bibEntry.fields.journal ?? "";
 
@@ -75,7 +75,7 @@ export function getJournalReference(bibEntry: BibTeXEntry, options: JournalRefer
     return journalRef;
 }
 
-export function getAuthors(bibEntry: BibTeXEntry, options: AuthorOptions = AuthorOptionsDefault) {
+export function getFormattedAuthors(bibEntry: BibTeXEntry, options: AuthorOptions = AuthorOptionsDefault) {
 
     const authors = bibEntry.authors;
 
@@ -99,8 +99,12 @@ export function getAuthors(bibEntry: BibTeXEntry, options: AuthorOptions = Autho
     }   
 }
 
-export function getTitle(bibEntry: BibTeXEntry) {
+export function getFormattedTitle(bibEntry: BibTeXEntry) {
     return bibEntry.fields.title ?? "No title";
+}
+
+export function getBibDeskUriLink(bibEntry: BibTeXEntry) {
+    return `[${bibEntry.citekey}](x-bdsk://${bibEntry.citekey})`
 }
 
 export class BibtexManager {
