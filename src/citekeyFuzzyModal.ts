@@ -242,7 +242,7 @@ export class OpenPdfFuzzyModal extends BibEntriesFuzzyModal {
                 folder_path,
                 validBdskFiles[0].parsedPath.base,
                 bibEntry.citekey,
-                validBdskFiles[0].index,
+                validBdskFiles[0].index+1, // we add +1 because of the indexing starting from 0
                 shouldCreateNewLeaf
             );
         } else {
