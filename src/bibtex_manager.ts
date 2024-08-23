@@ -33,7 +33,7 @@ function parseAuthors(bibEntriesArray:BibTeXEntry[]) {
             const firstName = (firstNameAndMidnames ?? "").split(' ')
                 .map(name => name.trim().charAt(0).toUpperCase() + '.').join(' ');
 
-            return {firstName,lastName};
+            return {first: firstName,last: lastName};
         });
         
         item.authors = parsedAuthors;
@@ -81,9 +81,9 @@ export function getFormattedAuthors(bibEntry: BibTeXEntry, options: AuthorOption
 
     const formattedAuthors = authors.map((author:ParsedAuthor):string => {
         if(options.onlyLastName) {
-            return author.lastName;
+            return author.last;
         } else {
-            return `${author.firstName} ${author.lastName}`; // Format: "Initials LastName"    
+            return `${author.first} ${author.last}`; // Format: "Initials LastName"    
         }   
     })
 
@@ -133,12 +133,12 @@ export class BibtexManager {
             console.log("BibTex titles processed in " + (t2 - t1) + " milliseconds");
         }
 
-        const t3 = Date.now();
-        parseAuthors(bibEntriesArray);
-        const t4 = Date.now();
-        if (this.plugin.settings.debug_parser) {
-            console.log("BibTex authors' entries parsed in " + (t4 - t3) + " milliseconds");
-        }
+        // const t3 = Date.now();
+        // parseAuthors(bibEntriesArray);
+        // const t4 = Date.now();
+        // if (this.plugin.settings.debug_parser) {
+        //     console.log("BibTex authors' entries parsed in " + (t4 - t3) + " milliseconds");
+        // }
         
         this.bibEntries = bibEntriesArray.reduce((acc: BibTeXDict, item: BibTeXEntry) => {
             acc[item.citekey] = item;

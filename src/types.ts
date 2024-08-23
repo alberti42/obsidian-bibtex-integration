@@ -33,7 +33,7 @@ export interface BibTeXEntry {
     fields: {[key: string]: string};   // The fields within the entry (e.g., "author", "title", "year", etc.)
 }
 
-export type ParsedAuthor = {firstName:string, lastName:string}
+export type ParsedAuthor = {first:string, last:string}
 export type ParsedAuthors = ParsedAuthor[];
 export interface ParsedAuthorsDict {
     [key:string]: ParsedAuthors;
