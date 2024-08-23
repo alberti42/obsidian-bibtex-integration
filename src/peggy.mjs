@@ -220,20 +220,25 @@ function peg$parse(input, options) {
   var peg$f0 = function(blocks) { return blocks.filter((item) => item) };
   var peg$f1 = function() { return null; };
   var peg$f2 = function(t, c, f) {
+    let authors;
+    const fields = f.reduce((acc, current) => {
+        if(current[0]!=="author") {
+          acc[current[0]] = current[1];
+        } else {
+          authors = current[1];
+        };
+        return acc;
+      }, {})
     return {
       citekey:c,
       type:t,
-      authors:[],
-      fields:f.reduce((acc, current) => {
-        acc[current[0]] = current[1];
-        return acc;
-      }, {})
+      authors,
+      fields
     }
   };
-  var peg$f3 = function(a) { console.log(a); return a; };
-  var peg$f4 = function(last, first) {return [first, last];};
-  var peg$f5 = function() { return null; };
-  var peg$f6 = function(t) { return null; };
+  var peg$f3 = function(last, first) {return [first, last];};
+  var peg$f4 = function() { return null; };
+  var peg$f5 = function(t) { return null; };
   var peg$currPos = options.peg$currPos | 0;
   var peg$savedPos = peg$currPos;
   var peg$posDetailsCache = [{ line: 1, column: 1 }];
@@ -1052,8 +1057,6 @@ function peg$parse(input, options) {
         s2 = s3;
       }
     }
-    peg$savedPos = s0;
-    s1 = peg$f3(s1);
     s0 = s1;
 
     return s0;
@@ -1306,7 +1309,7 @@ function peg$parse(input, options) {
         s2 = null;
       }
       peg$savedPos = s0;
-      s0 = peg$f4(s1, s2);
+      s0 = peg$f3(s1, s2);
     } else {
       peg$currPos = s0;
       s0 = peg$FAILED;
@@ -1607,7 +1610,7 @@ function peg$parse(input, options) {
     }
     if (s1 !== peg$FAILED) {
       peg$savedPos = s0;
-      s1 = peg$f5();
+      s1 = peg$f4();
     }
     s0 = s1;
 
@@ -1653,7 +1656,7 @@ function peg$parse(input, options) {
     }
     if (s1 !== peg$FAILED) {
       peg$savedPos = s0;
-      s1 = peg$f6(s1);
+      s1 = peg$f5(s1);
     }
     s0 = s1;
 

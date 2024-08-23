@@ -54,7 +54,7 @@ author_list
   = ("{" @authors "}")
 
 authors
-  = a:author|.., author_sep| { console.log(a); return a; }
+  = @author|.., author_sep|
   
 authorr
   = $("\\}" / "\\{" / curly_brackets / (!"}" !author_sep .))+
