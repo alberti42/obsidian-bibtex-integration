@@ -4,7 +4,7 @@
 import { App, FuzzyMatch, FuzzySuggestModal, MarkdownView, normalizePath, Notice, Platform, TFile } from 'obsidian';
 
 import BibtexIntegration from 'main';
-import { BibTeXEntry, HighlightType, ParsedPath } from 'types';
+import { BibTeXEntry, HighlightType, ParsedPathWithIndex } from 'types';
 import { createFolderIfNotExists, joinPaths, parseFilePath, resolveBookmark } from 'utils';
 import { BibtexManager, getBibDeskUriLink, getFormattedAuthors, getFormattedJournalReference, getFormattedTitle } from 'bibtex_manager';
 
@@ -211,16 +211,16 @@ export class OpenPdfFuzzyModal extends BibEntriesFuzzyModal {
         const bdskFiles = await Promise.all(
             Object.keys(bibEntry.fields)
                 .filter((item: string):boolean => item.startsWith('bdsk-file-'))
-                .map(async (item: string): Promise<ParsedPath | null> => {
+                .map(async (item: string, index:number): Promise<ParsedPathWithIndex|null> => {
                     const filepath = await resolveBookmark(bibEntry, item);
                     if (!filepath) return null;
-                    return parseFilePath(filepath);
+                    return {index,parsedPath:parseFilePath(filepath)};
                 }));
 
-        // Filter out the null results after promises have resolved
+        /// Filter out the null results after promises have resolved
         const validBdskFiles = bdskFiles
-            .filter((item: ParsedPath | null): item is ParsedPath => item !== null) // Keep properly resolved docs
-            .filter((item: ParsedPath) => item.ext.toLowerCase() === '.pdf'); // Keep only PDFs
+            .filter((item: ParsedPathWithIndex|null): item is ParsedPathWithIndex => item !== null) // Keep properly resolved docs
+            .filter((item: ParsedPathWithIndex) => item.parsedPath.ext.toLowerCase() === '.pdf'); // Keep only PDFs
 
         const num_bdsk_files = validBdskFiles.length;
         if(num_bdsk_files === 0) {
@@ -240,9 +240,9 @@ export class OpenPdfFuzzyModal extends BibEntriesFuzzyModal {
             openBdskDocument(
                 this.app,
                 folder_path,
-                validBdskFiles[0].base,
+                validBdskFiles[0].parsedPath.base,
                 bibEntry.citekey,
-                1,
+                validBdskFiles[0].index,
                 shouldCreateNewLeaf
             );
         } else {
@@ -330,8 +330,8 @@ export class InsertCitekeyFuzzyModal extends BibEntriesFuzzyModal {
     }
 }
 
-export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPath> {
-    constructor(private plugin: BibtexIntegration, private bibEntry: BibTeXEntry, private files:ParsedPath[] ) {
+export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPathWithIndex> {
+    constructor(private plugin: BibtexIntegration, private bibEntry: BibTeXEntry, private files:ParsedPathWithIndex[] ) {
         super(plugin.app);
         this.setPlaceholder(`Choose which PDF file to open for the paper ${bibEntry.citekey}...`);
         this.setInstructions(this.getInstructionsBasedOnOS());
@@ -379,23 +379,23 @@ export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPath> {
         }
     }
 
-    getItemText(item: ParsedPath): string {
-        return item.filename;
+    getItemText(item: ParsedPathWithIndex): string {
+        return item.parsedPath.filename;
     }
 
-    renderSuggestion(fuzzyMatch: FuzzyMatch<ParsedPath>, el: HTMLElement) {
+    renderSuggestion(fuzzyMatch: FuzzyMatch<ParsedPathWithIndex>, el: HTMLElement) {
         el.empty(); // Clear the existing content
 
         const suggestionContainer = document.createElement('div');
         suggestionContainer.classList.add('bibtex-integration-suggestions');
 
         const nameEl = document.createElement('div');
-        nameEl.textContent = fuzzyMatch.item.filename;
+        nameEl.textContent = fuzzyMatch.item.parsedPath.filename;
         nameEl.classList.add('bibtex-integration-name');
 
         const dirEl = document.createElement('div');
         dirEl.classList.add('bibtex-integration-dir');
-        dirEl.innerText = fuzzyMatch.item.dir;
+        dirEl.innerText = fuzzyMatch.item.parsedPath.dir;
         
         suggestionContainer.appendChild(nameEl);
         suggestionContainer.appendChild(dirEl);
@@ -403,11 +403,11 @@ export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPath> {
         el.appendChild(suggestionContainer);
     }
 
-    getItems(): Array<ParsedPath> {
+    getItems(): Array<ParsedPathWithIndex> {
         return this.files;
     }
 
-    onChooseItem(selectedItem: ParsedPath, evt: MouseEvent | KeyboardEvent): void {
+    onChooseItem(selectedItem: ParsedPathWithIndex, evt: MouseEvent | KeyboardEvent): void {
         const shouldCreateNewLeaf = evt.altKey;
 
         let folder_path;
@@ -420,9 +420,9 @@ export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPath> {
         openBdskDocument(
             this.app,
             folder_path,
-            selectedItem.base,
+            selectedItem.parsedPath.base,
             this.bibEntry.citekey,
-            this.files.findIndex(item => item === selectedItem) + 1, // we add +1 because of the indexing starting from 0
+            selectedItem.index+1, // we add +1 because of the indexing starting from 0
             shouldCreateNewLeaf
         );
     }

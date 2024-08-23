@@ -64,6 +64,10 @@ export function isBookmark(obj:unknown): obj is Bookmark {
     }
 }
 
+export type ParsedPaths = ParsedPathWithIndex[];
+
+export type ParsedPathWithIndex = {index:number, parsedPath:ParsedPath};
+
 export interface ParsedPath {
     dir: string,
     base: string,
