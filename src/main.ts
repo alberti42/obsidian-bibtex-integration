@@ -48,7 +48,6 @@ export default class BibtexIntegration extends Plugin {
         this.addSettingTab(new BibtexIntegrationSettingTab(this.app, this));
 
         // For example, triggering the worker when a command is run:
-        /*
         this.addCommand({
             id: 'parse-bibtex',
             name: 'Force parsing BibTeX file again',
@@ -56,7 +55,6 @@ export default class BibtexIntegration extends Plugin {
                 this.parseBibtexFile();
             }
         });
-        */
 
         this.addCommand({
             id: 'open-pdf-from-bibtex-library',

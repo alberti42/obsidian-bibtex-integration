@@ -61,9 +61,9 @@ const inline_workers_plugin = (user_options = {}) => ({
                 // Collect dependencies from the metadata
                 const inputs = result.metafile.inputs;
                 Object.keys(inputs).forEach((input) => {
-                    dependencies.add(path.resolve(input));  // Track full path to dependencies
+                    dependencies.add(input);  // Track full path to dependencies
                 });
-                dependencies.add(path.resolve(workerFile));
+                dependencies.add(workerFile);
 
                 const workerCode = result.outputFiles[0].text;
                 const workerCodeBase64 = Buffer.from(workerCode).toString('base64');
