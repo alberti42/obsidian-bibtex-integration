@@ -16,27 +16,34 @@ import { WorkerManager } from 'worker_manager';
 import { DEFAULT_SETTINGS } from 'defaults';
 import { InsertCitationFuzzyModal, InsertCitekeyFuzzyModal, OpenPdfFuzzyModal } from 'citekeyFuzzyModal';
 
+// Define the worker code as a function that returns a string
+function workerScript(): string {
+    return `
+        self.onmessage = async function(event) {
+            const bibtexData = event.data;
+            // Simulate BibTeX parsing
+            const result = parseBibtex(bibtexData);
+            self.postMessage(result);
+        };
+
+        function parseBibtex(data) {
+            // Replace with actual BibTeX parsing logic
+            return 'Parsed BibTeX: ' + data.bibtex;
+        }
+    `;
+}
+
 export default class BibtexIntegration extends Plugin {
     settings: BibtexIntegrationSettings = DEFAULT_SETTINGS;
 
     private pdf_plus_plugin: PdfPlusPlugin | null = null;
     
-    public bibtexManager: BibtexManager | null = null;
+    public bibtexManager = new BibtexManager(this);
 
-    private bibtexParserWorker:WorkerManager<ParserWorkerReply,ParserWorkerInputs>
+    private bibtexParserWorker:WorkerManager<ParserWorkerReply,ParserWorkerInputs> | null = null;
 
     constructor(app:App,manifest:PluginManifest) {
         super(app,manifest);
-
-        // Dynamically load the worker as a blob URL
-        // const workerBlob = new Blob([`(${workerFunction.toString()})()`], { type: "application/javascript" });
-        // const workerURL = URL.createObjectURL(workerBlob);
-
-        this.bibtexParserWorker = new WorkerManager<ParserWorkerReply, ParserWorkerInputs>(
-            new Worker(),
-            { blockingChannel: true }
-        );
-
 
         const adapter = this.app.vault.adapter;
         if (!(adapter instanceof FileSystemAdapter)) {
@@ -109,17 +116,31 @@ export default class BibtexIntegration extends Plugin {
             }
         });
 
-        if(this.settings.import_delay_ms>0) {
+        /*if(this.settings.import_delay_ms>0) {
             setTimeout(() => {
                 this.parseBibtexFile();
             }, this.settings.import_delay_ms);
         } else {
             this.parseBibtexFile();
-        }
+        }*/
         
         this.app.workspace.onLayoutReady(() => {
             // Wait that all plugins have been loaded to apply the monkey-patch
             this.monkey_patch_PDF_plus();
+            console.log("LOADED");
+
+            return;
+            // Create the worker as an inline blob
+            const workerBlob = new Blob([workerScript()], { type: 'application/javascript' });
+            const workerURL = URL.createObjectURL(workerBlob);
+
+            // Initialize the worker manager with the worker
+            this.bibtexParserWorker = new WorkerManager<ParserWorkerReply, ParserWorkerInputs>(
+                new Worker(workerURL),
+                { blockingChannel: true }
+            );
+
+            this.bibtexManager.parseBibtexData("Test");
         });        
     }
 
@@ -187,7 +208,7 @@ export default class BibtexIntegration extends Plugin {
             return;
         }
 
-        watchFile(this.settings.bibtex_filepath,this);
+        // watchFile(this.settings.bibtex_filepath,this);
         
         this.bibtexManager = new BibtexManager(this);
 

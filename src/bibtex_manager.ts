@@ -109,21 +109,24 @@ export function getBibDeskUriLink(bibEntry: BibTeXEntry) {
 
 export class BibtexManager {
     private bibEntries: BibTeXDict = {};
-    private parserOptions:ParserOptions;
     
     constructor(private plugin: BibtexIntegration) {
-
-        this.parserOptions = {
-            debug_parser: plugin.settings.debug_parser
-        };
     }
 
+    getParserOptions():ParserOptions {
+        return {
+            debug_parser: this.plugin.settings.debug_parser
+        };
+    }
+    
     async parseBibtexData(bibtex_data: string) {
         const parserWorker = this.plugin.getParserWorker();
 
+        if(!parserWorker) return;
+
         const bibEntriesArray = await parserWorker.post({
             bibtex_data,
-            options: this.parserOptions
+            options: this.getParserOptions()
         }) ?? [];
 
         const t1 = Date.now();
