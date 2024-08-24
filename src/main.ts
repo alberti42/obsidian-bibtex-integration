@@ -11,7 +11,7 @@ import * as path from 'path';
 import { BibtexIntegrationSettings, ParserWorkerInputs, ParserWorkerReply } from 'types';
 import { unwatchFile, watchFile, doesFolderExist, joinPaths, set_bookmark_resolver_path } from 'utils';
 
-import LoadWorker from 'web-worker:./bibtex.worker';
+// import LoadWorker from 'web-worker:./bibtex.worker';
 import { WorkerManager } from 'worker_manager';
 import { DEFAULT_SETTINGS } from 'defaults';
 import { InsertCitationFuzzyModal, InsertCitekeyFuzzyModal, OpenPdfFuzzyModal } from 'citekeyFuzzyModal';
@@ -23,15 +23,21 @@ export default class BibtexIntegration extends Plugin {
     
     public bibtexManager: BibtexManager | null = null;
 
-    private bibtexParserWorker = new WorkerManager<ParserWorkerReply,ParserWorkerInputs>(
-        new LoadWorker(),
-        {
-            blockingChannel: true,
-        }
-    );
+    private bibtexParserWorker:WorkerManager<ParserWorkerReply,ParserWorkerInputs>
 
     constructor(app:App,manifest:PluginManifest) {
         super(app,manifest);
+
+        // Dynamically load the worker as a blob URL
+        // const workerBlob = new Blob([`(${workerFunction.toString()})()`], { type: "application/javascript" });
+        // const workerURL = URL.createObjectURL(workerBlob);
+
+        this.bibtexParserWorker = new WorkerManager<ParserWorkerReply, ParserWorkerInputs>(
+            new Worker(),
+            { blockingChannel: true }
+        );
+
+
         const adapter = this.app.vault.adapter;
         if (!(adapter instanceof FileSystemAdapter)) {
             throw new Error("The vault folder could not be determined.");
