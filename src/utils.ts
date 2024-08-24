@@ -119,6 +119,18 @@ export async function fileExists(path:string) {
     return await fs.stat(path).then(() => true, () => false);
 }
 
+/*export async function checkFileExists(filePath: string): Promise<boolean> {
+    try {
+        const stats = await fs.stat(filePath);
+        return stats.isFile();  // Check if the path is a directory
+    } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+            return false;  // The directory does not exist
+        }
+        throw error; // Re-throw the error if it's not related to the existence check
+    }
+}*/
+
 // Function to resolve bookmark using the Swift command-line tool with Base64 piping
 export function run_bookmark_resolver(base64Bookmark: string): Promise<string> {
     return new Promise((resolve, reject) => {

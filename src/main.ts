@@ -9,7 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { BibtexIntegrationSettings } from 'types';
-import { unwatchFile, watchFile, doesFolderExist, joinPaths, set_bookmark_resolver_path } from 'utils';
+import { unwatchFile, watchFile, doesFolderExist, joinPaths, set_bookmark_resolver_path, fileExists } from 'utils';
 
 import { DEFAULT_SETTINGS } from 'defaults';
 import { InsertCitationFuzzyModal, InsertCitekeyFuzzyModal, OpenPdfFuzzyModal } from 'citekeyFuzzyModal';
@@ -162,20 +162,29 @@ export default class BibtexIntegration extends Plugin {
             bibtex_data = await this.readBibFile();
             const t1 = Date.now();
             if (this.settings.debug_parser) console.log("BibTex file loaded in " + (t1 - t0) + " milliseconds.");
-        } catch {
-            console.error(`Unexpected error when loading BibTex file ${this.settings.bibtex_filepath}`);
+        } catch(error) {
+            let errorMsg;
+            if(error instanceof Error) {
+                errorMsg = error.message;
+            } else {
+                errorMsg = `${error}`;
+            }
+            console.error(`Error when loading BibTex file ${this.settings.bibtex_filepath.trim()}:`, errorMsg);
             return;
         }
 
         // watchFile(this.settings.bibtex_filepath,this);
         
-        this.bibtexManager.parseBibtexData(bibtex_data);
+        // this.bibtexManager.parseBibtexData(bibtex_data);
     }
 
     // Function to read the .bib file and return its contents
     async readBibFile(): Promise < string > {
         if (this.settings.bibtex_filepath.trim() === '') {
-            throw new Error("No bib file provided.")
+            throw new Error("no .bib file provided.")
+        }
+        if (! await fileExists(this.settings.bibtex_filepath)) {
+            throw new Error("file does not exist.")
         }
         try {
             const data = await fs.promises.readFile(this.settings.bibtex_filepath, 'utf8');

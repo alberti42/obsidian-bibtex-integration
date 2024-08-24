@@ -1,6 +1,6 @@
 // worker_manager.ts
 
-import { WorkerExitStatus, WorkerMsg } from "types";
+import { WorkerExitStatus, WorkerReply } from "types";
 
 export class WorkerManager<TResult = unknown, TInput = unknown> {
     private worker: Worker;
@@ -26,13 +26,13 @@ export class WorkerManager<TResult = unknown, TInput = unknown> {
             const handleMessage = (event: MessageEvent) => {
                 this.blocked = false;
                 this.worker.removeEventListener('message', handleMessage);  // Clean up event listener
-                const data:WorkerMsg = event.data;
+                const data:WorkerReply = event.data;
                 switch(data.exitStatus) {
                 case WorkerExitStatus.Success:
-                    resolve(event.data);  // Resolve with the worker's response
+                    resolve(event.data.output);  // Resolve with the worker's response
                     break;
                 case WorkerExitStatus.Fail:
-                    reject(data);  // Resolve with the worker's response
+                    reject(event.data.output);  // Resolve with the worker's response
                     break;
                 }
             };

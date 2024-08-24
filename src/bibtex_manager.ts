@@ -1,6 +1,6 @@
 // bibtex_manager.ts
 
-import { AuthorOptions, BibTeXDict, BibTeXEntry, HighlightType, JournalReferenceOptions, ParsedAuthor, ParserOptions, ParserWorkerInputs, ParserWorkerReply, Queries } from "types";
+import { AuthorOptions, BibTeXDict, BibTeXEntry, HighlightType, JournalReferenceOptions, ParsedAuthor, ParserOptions, ParserWorkerInput, ParserWorkerOutput, Queries } from "types";
 import { parseUri, posixToFileURL, resolveBookmark } from "utils"
 import { AuthorOptionsDefault, JournalReferenceOptionDefault } from "defaults"
 import BibtexIntegration from "main";
@@ -113,7 +113,7 @@ export function getBibDeskUriLink(bibEntry: BibTeXEntry) {
 
 export class BibtexManager {
     private bibEntries: BibTeXDict = {};
-    private bibtexParserWorker:WorkerManager<ParserWorkerReply,ParserWorkerInputs> | null = null;
+    private bibtexParserWorker:WorkerManager<ParserWorkerOutput,ParserWorkerInput> | null = null;
 
     constructor(private plugin: BibtexIntegration) {
         this.initializeWorker();
@@ -130,7 +130,7 @@ export class BibtexManager {
         if(!bibtexWorker) return;
         
         // Initialize the worker manager with the worker
-        this.bibtexParserWorker = new WorkerManager<ParserWorkerReply, ParserWorkerInputs>(
+        this.bibtexParserWorker = new WorkerManager<ParserWorkerOutput, ParserWorkerInput>(
             bibtexWorker,
             { preventMultipleTasks: true }
         );
@@ -139,11 +139,17 @@ export class BibtexManager {
     async parseBibtexData(bibtex_data: string) {
         if(!this.bibtexParserWorker) return;
 
+        let bibEntriesArray;
         try {
-        const bibEntriesArray = await this.bibtexParserWorker.post({
-            bibtexText: bibtex_data,
-            options: this.getParserOptions()
-        }) ?? [];
+            bibEntriesArray = await this.bibtexParserWorker.post({
+                bibtexText: bibtex_data,
+                options: this.getParserOptions()
+            }) ?? [];
+        } catch(error) {
+            new Notice("An error occurred when parsing the BibTex file. Check the development console for more details.");
+            console.log(error);
+            return;
+        }
 
         const t1 = Date.now();
         processTitles(bibEntriesArray);
@@ -163,10 +169,7 @@ export class BibtexManager {
             acc[item.citekey] = item;
             return acc;
         }, {});
-        } catch(error) {
-            new Notice("An error occurred when parsing the BibTex file. Check the development console for more details.");
-            return;
-        }
+
     }
 
     getBibEntry(citekey: string): BibTeXEntry | undefined {

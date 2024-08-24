@@ -15,35 +15,6 @@ export interface BibTeXDict {
     [key: string]: BibTeXEntry;   // The fields within the entry (e.g., "author", "title", "year", etc.)
 }
 
-
-export type ParserWorkerReply = BibTeXEntry[];
-
-export interface WorkerMsg {
-    exitStatus: WorkerExitStatus;
-    error: WorkerErrorInfo | null;
-    data: ParserWorkerReply;
-}
-
-export interface WorkerErrorInfo {
-    errorName: string;
-    errorMsg: string;
-    errorStack: string | undefined;
-}
-
-export enum WorkerExitStatus {
-    Success = 0,
-    Fail = -1,
-}
-
-export interface ParserWorkerInputs {
-    bibtexText: string;
-    options: ParserOptions;
-}
-
-export interface ParserOptions {
-    debug_parser: boolean;
-}
-
 export interface BibTeXEntry {
     citekey: string;
     type: string;
@@ -121,3 +92,32 @@ export interface JournalReferenceOptions {
     includingYear: boolean,
     highlightVolume: HighlightType,
 }
+
+export interface WorkerReply {
+    exitStatus: WorkerExitStatus;
+    error: WorkerErrorMsg | null;
+    output: ParserWorkerOutput;
+}
+
+export interface WorkerErrorMsg {
+    errorName: string;
+    errorMsg: string;
+    errorStack: string | undefined;
+}
+
+export enum WorkerExitStatus {
+    Success = 0,
+    Fail = -1,
+}
+
+export interface ParserWorkerInput {
+    bibtexText: string;
+    options: ParserOptions;
+}
+
+export type ParserWorkerOutput = BibTeXEntry[];
+
+export interface ParserOptions {
+    debug_parser: boolean;
+}
+

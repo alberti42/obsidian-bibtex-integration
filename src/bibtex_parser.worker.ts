@@ -1,6 +1,6 @@
 // bibtex_parser.worker.ts
 
-import { ParserWorkerInputs, ParserWorkerReply, WorkerExitStatus, WorkerErrorInfo, WorkerMsg } from 'types';
+import { ParserWorkerInput, ParserWorkerOutput, WorkerExitStatus, WorkerErrorMsg, WorkerReply } from 'types';
 import { SyntaxError } from "peggy";
 import { parse, SyntaxError as SyntaxErrorFnc } from "./peggy.mjs"
 
@@ -21,22 +21,21 @@ function min(a:number,b:number): number {
 // Do not make this function async or otherwise errors are not detected properly
 // If you need to make it async, follow https://stackoverflow.com/a/61409478/4216175
 self.onmessage = function (event: MessageEvent) {
-    const msg: ParserWorkerInputs = event.data;
-    let bibtexText = msg.bibtexText;
+    const msg: ParserWorkerInput = event.data;
+    const bibtexText = msg.bibtexText;
     const debug_parser = msg.options.debug_parser;
 
     try {
         const t2 = Date.now();
-        bibtexText = bibtexText + "\n\nicnodccond";
         const bibEntries = parse(bibtexText, {});
         const t3 = Date.now();
         if (debug_parser) {
             console.log("Bibtex file parsed in " + (t3 - t2) + " milliseconds");
             console.log(`Imported ${Object.keys(bibEntries).length} bibtex entries`);
         }
-        const reply:WorkerMsg = {
+        const reply:WorkerReply = {
             exitStatus: WorkerExitStatus.Success,
-            data:bibEntries,
+            output:bibEntries,
             error: null,
         }
         self.postMessage(reply);
@@ -73,15 +72,15 @@ self.onmessage = function (event: MessageEvent) {
             console.error(selectedLines);
             console.error(error);
 
-            const errorInfo: WorkerErrorInfo = {
+            const errorInfo: WorkerErrorMsg = {
                 errorName: error.name,
                 errorMsg: `${error}`,
                 errorStack: undefined,
             }
 
-            const reply:WorkerMsg = {
+            const reply:WorkerReply = {
                 exitStatus: WorkerExitStatus.Fail,
-                data: [],
+                output: [],
                 error: errorInfo,
             }
             self.postMessage(reply);
@@ -90,15 +89,15 @@ self.onmessage = function (event: MessageEvent) {
             console.error(`Message: ${error.message}`);
             console.error(`Stack: ${error.stack}`);
 
-            const errorInfo: WorkerErrorInfo = {
+            const errorInfo: WorkerErrorMsg = {
                 errorName: error.name,
                 errorMsg: error.message,
                 errorStack: error.stack
             }
 
-            const reply:WorkerMsg = {
+            const reply:WorkerReply = {
                 exitStatus: WorkerExitStatus.Fail,
-                data: [],
+                output: [],
                 error: errorInfo,
             }
             self.postMessage(reply);
