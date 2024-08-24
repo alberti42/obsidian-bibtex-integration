@@ -20,7 +20,6 @@ const prod = process.argv[2] === "production";
 // Get the output directory
 const outdir = 'dist';
 
-
 const buildMain = async () => {
     // Set up rebuild logic
     const onWorkersRebuild = async () => {
@@ -83,6 +82,7 @@ const buildMain = async () => {
         await context.rebuild();
         process.exit(0);
     } else {
+        // Watch for changes in development mode
         await context.watch();
     }
 };

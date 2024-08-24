@@ -6,6 +6,7 @@ import { AuthorOptionsDefault, JournalReferenceOptionDefault } from "defaults"
 import BibtexIntegration from "main";
 import { WorkerManager } from "worker_manager";
 import { LoadWorker } from 'inline-workers'; // No need for this file to physically exist
+import { Notice } from "obsidian";
 
 function processTitles(bibEntriesArray:BibTeXEntry[]) {
     bibEntriesArray.forEach((item:BibTeXEntry) => {
@@ -140,7 +141,7 @@ export class BibtexManager {
 
         try {
         const bibEntriesArray = await this.bibtexParserWorker.post({
-            bibtex_data,
+            bibtexText: bibtex_data,
             options: this.getParserOptions()
         }) ?? [];
 
@@ -163,7 +164,8 @@ export class BibtexManager {
             return acc;
         }, {});
         } catch(error) {
-            console.log("FDICNDO");
+            new Notice("An error occurred when parsing the BibTex file. Check the development console for more details.");
+            return;
         }
     }
 

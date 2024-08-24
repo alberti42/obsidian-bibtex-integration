@@ -15,10 +15,28 @@ export interface BibTeXDict {
     [key: string]: BibTeXEntry;   // The fields within the entry (e.g., "author", "title", "year", etc.)
 }
 
-export type ParserWorkerReply = BibTeXEntry[] | null;
+
+export type ParserWorkerReply = BibTeXEntry[];
+
+export interface WorkerMsg {
+    exitStatus: WorkerExitStatus;
+    error: WorkerErrorInfo | null;
+    data: ParserWorkerReply;
+}
+
+export interface WorkerErrorInfo {
+    errorName: string;
+    errorMsg: string;
+    errorStack: string | undefined;
+}
+
+export enum WorkerExitStatus {
+    Success = 0,
+    Fail = -1,
+}
 
 export interface ParserWorkerInputs {
-    bibtex_data: string;
+    bibtexText: string;
     options: ParserOptions;
 }
 
