@@ -11,30 +11,14 @@ import * as path from 'path';
 import { BibtexIntegrationSettings, ParserWorkerInputs, ParserWorkerReply } from 'types';
 import { unwatchFile, watchFile, doesFolderExist, joinPaths, set_bookmark_resolver_path } from 'utils';
 
+import { workerScript } from 'inline-worker';
+
 // import LoadWorker from 'web-worker:./bibtex.worker';
 import { WorkerManager } from 'worker_manager';
 import { DEFAULT_SETTINGS } from 'defaults';
 import { InsertCitationFuzzyModal, InsertCitekeyFuzzyModal, OpenPdfFuzzyModal } from 'citekeyFuzzyModal';
 
-function workerScript(): string {
-    return `
-        self.onmessage = async function(event) {
-            try {
-                const bibtexData = event.data;
-                console.log("Worker received data:", bibtexData);
-                
-                // Simulate BibTeX parsing
-                const result = "Parsed BibTeX: " + bibtexData.bibtex_data;
-                self.postMessage(result);
-
-                console.log("Worker finished processing");
-            } catch (error) {
-                console.error("Worker encountered an error:", error);
-                self.postMessage({ error: error.message });
-            }
-        };
-    `;
-}
+// GENERATED_WORKER_CODE
 
 export default class BibtexIntegration extends Plugin {
     settings: BibtexIntegrationSettings = DEFAULT_SETTINGS;

@@ -1,6 +1,6 @@
 // workers.d.ts
 
-declare module 'web-worker:*' {
-  const WorkerFactory: new () => Worker;
-  export default WorkerFactory;
+declare module 'inline-worker' {
+  function workerScript(): string;
+  export { workerScript };
 }

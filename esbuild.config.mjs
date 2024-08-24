@@ -1,7 +1,10 @@
+// esbuild.config.mjs
+
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
 import copy from 'esbuild-plugin-copy';
+import fs from 'fs/promises'; // For reading the generated worker code
 
 // Banner message for the generated/bundled files
 const banner = `
@@ -12,58 +15,106 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 // Determine whether to build for production or development
-const prod = (process.argv[2] === "production");
+const prod = process.argv[2] === "production";
 
 // Get the output directory
 const outdir = 'dist';
 
-const context = await esbuild.context({
-	banner: {
-		js: banner,
-	},
-	entryPoints: ["src/main.ts"],
-	bundle: true,
-	external: [
-		"obsidian",
-		"electron",
-		"@codemirror/autocomplete",
-		"@codemirror/collab",
-		"@codemirror/commands",
-		"@codemirror/language",
-		"@codemirror/lint",
-		"@codemirror/search",
-		"@codemirror/state",
-		"@codemirror/view",
-		"@lezer/common",
-		"@lezer/highlight",
-		"@lezer/lr",
-		...builtins
-	],
-	format: "cjs",
-	target: "es2018",
-	logLevel: "info",
-	sourcemap: prod ? false : "inline",
-	treeShaking: true,
-	outdir,
-	plugins: [
-		copy({
-			assets: {
-				from: ['./manifest.json'],
-				to: ['./manifest.json']
-			}
-		}),
-		copy({
-			assets: {
-				from: ['./styles/styles.css'],
-				to: ['./styles.css']
-			}
-		})
-	],
-});
+// Step 1: Bundle the worker code separately and inject it into the main script
+const buildWorker = async () => {
+    const result = await esbuild.build({
+        entryPoints: ['src/bibtex.worker.ts'], // Transpile the worker code
+        bundle: true,
+        write: false, // Don't write the output to a file, we want it as a string
+        platform: 'browser',
+        format: 'iife', // Self-contained function format
+        minify: prod, // Minify in production
+    });
 
-if (prod) {
-	await context.rebuild();
-	process.exit(0);
-} else {
-	await context.watch();
-}
+    // Get the generated worker code as a string
+    const workerCode = result.outputFiles[0].text;
+    return workerCode;
+};
+
+// Step 2: Main build process
+const buildMain = async () => {
+    const workerCode = await buildWorker(); // Get the transpiled worker code
+
+    // Start the main build process
+    const context = await esbuild.context({
+        banner: {
+            js: banner,
+        },
+        entryPoints: ["src/main.ts"],
+        bundle: true,
+        external: [
+            "obsidian",
+            "electron",
+            "@codemirror/autocomplete",
+            "@codemirror/collab",
+            "@codemirror/commands",
+            "@codemirror/language",
+            "@codemirror/lint",
+            "@codemirror/search",
+            "@codemirror/state",
+            "@codemirror/view",
+            "@lezer/common",
+            "@lezer/highlight",
+            "@lezer/lr",
+            ...builtins
+        ],
+        format: "cjs", // Maintain cjs format for Obsidian compatibility
+        target: "es2018",
+        logLevel: "info",
+        sourcemap: prod ? false : "inline",
+        treeShaking: true,
+        outdir,
+        plugins: [
+            // Custom plugin to inject worker code into the main.ts
+            {
+                name: 'inline-worker',
+                setup(build) {
+                    build.onLoad({ filter: /main\.ts$/ }, async (args) => {
+                        // Read the main.ts content
+                        let source = await fs.readFile(args.path, 'utf8');
+
+                        // Inject the worker code into the main.ts content as a function
+                        const workerBlobCode = `
+                            function workerScript() {
+                                return \`${workerCode}\`;
+                            }
+                        `;
+
+                        // Replace a placeholder in main.ts with the injected worker script code
+                        source = source.replace('// GENERATED_WORKER_CODE', workerBlobCode);
+                        console.log(source);
+                        return { contents: source, loader: 'ts' };
+                    });
+                },
+            },
+            copy({
+                assets: {
+                    from: ['./manifest.json'],
+                    to: ['./manifest.json']
+                }
+            }),
+            copy({
+                assets: {
+                    from: ['./styles/styles.css'],
+                    to: ['./styles.css']
+                }
+            })
+        ],
+    });
+
+    // Watch or build based on the environment
+    if (prod) {
+        await context.rebuild();
+        process.exit(0);
+    } else {
+        await context.watch();
+    }
+};
+
+// Run the build process
+buildMain().catch(() => process.exit(1));
