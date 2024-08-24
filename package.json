@@ -34,7 +34,6 @@
         "add": "^2.0.6",
         "bplist-parser": "^0.3.2",
         "chokidar": "^3.6.0",
-        "monkey-around": "^3.0.0",
-        "promise-worker": "^2.0.1"
+        "monkey-around": "^3.0.0"
     }
 }

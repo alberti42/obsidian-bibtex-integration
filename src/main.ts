@@ -16,20 +16,23 @@ import { WorkerManager } from 'worker_manager';
 import { DEFAULT_SETTINGS } from 'defaults';
 import { InsertCitationFuzzyModal, InsertCitekeyFuzzyModal, OpenPdfFuzzyModal } from 'citekeyFuzzyModal';
 
-// Define the worker code as a function that returns a string
 function workerScript(): string {
     return `
         self.onmessage = async function(event) {
-            const bibtexData = event.data;
-            // Simulate BibTeX parsing
-            const result = parseBibtex(bibtexData);
-            self.postMessage(result);
-        };
+            try {
+                const bibtexData = event.data;
+                console.log("Worker received data:", bibtexData);
 
-        function parseBibtex(data) {
-            // Replace with actual BibTeX parsing logic
-            return 'Parsed BibTeX: ' + data.bibtex;
-        }
+                // Simulate BibTeX parsing
+                const result = "Parsed BibTeX: " + bibtexData.bibtex_data;
+                self.postMessage(result);
+
+                console.log("Worker finished processing");
+            } catch (error) {
+                console.error("Worker encountered an error:", error);
+                self.postMessage({ error: error.message });
+            }
+        };
     `;
 }
 
@@ -124,24 +127,31 @@ export default class BibtexIntegration extends Plugin {
             this.parseBibtexFile();
         }*/
         
-        this.app.workspace.onLayoutReady(() => {
-            // Wait that all plugins have been loaded to apply the monkey-patch
+        this.app.workspace.onLayoutReady(async () => {
+            // Wait for all plugins to be loaded
             this.monkey_patch_PDF_plus();
             console.log("LOADED");
 
-            return;
-            // Create the worker as an inline blob
-            const workerBlob = new Blob([workerScript()], { type: 'application/javascript' });
-            const workerURL = URL.createObjectURL(workerBlob);
+            try {
+                // Create the worker as an inline blob
+                const workerBlob = new Blob([workerScript()], { type: 'application/javascript' });
+                const workerURL = URL.createObjectURL(workerBlob);
 
-            // Initialize the worker manager with the worker
-            this.bibtexParserWorker = new WorkerManager<ParserWorkerReply, ParserWorkerInputs>(
-                new Worker(workerURL),
-                { blockingChannel: true }
-            );
+                // Initialize the worker manager with the worker
+                this.bibtexParserWorker = new WorkerManager<ParserWorkerReply, ParserWorkerInputs>(
+                    new Worker(workerURL),
+                    { blockingChannel: true }
+                );
 
-            this.bibtexManager.parseBibtexData("Test");
-        });        
+                // Send data to the worker and wait for the result
+                const res = await this.bibtexParserWorker.post({ bibtex_data: "", options: { debug_parser: false } });
+                console.log("FINISHED WAITING");
+                console.log(res);
+
+            } catch (error) {
+                console.error("Error during worker processing:", error);
+            }
+        });     
     }
 
     monkey_patch_PDF_plus() {

@@ -1,49 +1,44 @@
 // worker_manager.ts
 
-import PromiseWorker from 'promise-worker';
+// worker_manager.ts
 
-/**
- * Manages a Worker, recording its state and optionally preventing
- * message postings before responses to prior messages have been received.
- */
 export class WorkerManager<TResult = unknown, TInput = unknown> {
-  private worker = new PromiseWorker(this._worker);
-  options: WorkerManagerOptions;
+    private worker: Worker;
+    private blocked: boolean;
+    private options: WorkerManagerOptions;
 
-  /**
-   * Only relevant when `blockingChannel` option is true.
-   * Then this property is true iff the worker is currently processing a
-   * received message, and has not yet posted a response.
-   */
-  blocked = false;
+    constructor(worker: Worker, options: WorkerManagerOptions) {
+        this.worker = worker;
+        this.blocked = false;
+        this.options = { ...workerManagerDefaultOptions, ...options };
+        
+        // Listen for messages from the worker
+        this.worker.onmessage = (event) => {
+            
 
-  constructor(private _worker: Worker, options: WorkerManagerOptions) {
-    this.options = { ...workerManagerDefaultOptions, ...options };
-  }
+            // Handle response from the worker (e.g., resolve a promise)
+            this.onWorkerMessage(event.data);
+        };
 
-  /**
-   * Attempt to post a message to the worker and return a promise response.
-   *
-   * If `blockingChannel` option is true and the channel is currently blocked,
-   * the message will be discarded and an error will be thrown.
-   */
-  async post(msg: TInput): Promise<TResult> {
-    if (this.options.blockingChannel && this.blocked) {
-      throw new WorkerManagerBlocked();
+        this.worker.onerror = (event) => {
+            console.error("Worker error:", event);
+            // Reject any pending promises or handle errors appropriately
+        };
     }
 
-    this.blocked = true;
-    return this.worker.postMessage(msg).then(
-      (result) => {
-        this.blocked = false;
-        return result;
-      },
-      (error) => {
-        this.blocked = false;
-        throw error;
-      },
-    );
-  }
+    async post(message: TInput): Promise<TResult> {
+        if (this.options.blockingChannel && this.blocked) {
+            throw new WorkerManagerBlocked();
+        }
+
+        this.blocked = true;
+        return new Promise((resolve, reject) => {
+            this.onWorkerMessage = resolve;  // Resolve when worker responds
+            this.worker.postMessage(message);
+        });
+    }
+
+    private onWorkerMessage: (result: TResult) => void = () => {};
 }
 
 export class WorkerManagerBlocked extends Error {
