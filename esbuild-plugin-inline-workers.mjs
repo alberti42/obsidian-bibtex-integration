@@ -11,7 +11,6 @@ const default_options = {
     production: false,
     srcDir: '.',
     workerExtension: '.worker.ts',
-    virtualModuleName: 'workers', // Virtual module name, no file needed
 };
 
 // Custom esbuild plugin to generate worker code dynamically
@@ -61,12 +60,12 @@ const inline_workers_plugin = (user_options = {}) => ({
         };
 
         // Mark the virtual module for 'workers' so esbuild knows how to handle it
-        build.onResolve({ filter: /^workers$/ }, () => {
-            return { path: 'workers', namespace: 'inline-worker' };
+        build.onResolve({ filter: /^inline-workers$/ }, () => {
+            return { path: 'inline-workers', namespace: 'inline-workers' };
         });
 
         // Dynamically generate 'workers' content when it's loaded
-        build.onLoad({ filter: /^workers$/, namespace: 'inline-worker' }, async () => {
+        build.onLoad({ filter: /^inline-workers$/, namespace: 'inline-workers' }, async () => {
             // Find and build worker files
             const workerDict = await buildWorkers(); // Get the worker dictionary
 

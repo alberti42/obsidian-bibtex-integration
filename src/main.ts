@@ -12,7 +12,7 @@ import { BibtexIntegrationSettings, ParserWorkerInputs, ParserWorkerReply } from
 import { unwatchFile, watchFile, doesFolderExist, joinPaths, set_bookmark_resolver_path } from 'utils';
 
 // import { LoadWorker } from 'inline-worker';
-import { LoadWorker } from 'workers'; // No need for this file to physically exist
+import { LoadWorker } from 'inline-workers'; // No need for this file to physically exist
 
 import { WorkerManager } from 'worker_manager';
 import { DEFAULT_SETTINGS } from 'defaults';
