@@ -88,7 +88,6 @@ export function LoadWorker(workerName) {
 
 ${workerDictCode}
 `;
-            console.log(loadWorkerCode);
             return { contents: loadWorkerCode, loader: 'ts' };
         });
     },

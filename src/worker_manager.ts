@@ -25,7 +25,7 @@ export class WorkerManager<TResult = unknown, TInput = unknown> {
     }
 
     async post(message: TInput): Promise<TResult> {
-        if (this.options.blockingChannel && this.blocked) {
+        if (this.options.preventMultipleTasks && this.blocked) {
             throw new WorkerManagerBlocked();
         }
 
@@ -52,9 +52,9 @@ export interface WorkerManagerOptions {
    * a message, no other messages can be sent until the worker sends a message.
    * Messages which are sent during the blocking period will be discarded.
    */
-  blockingChannel: boolean;
+  preventMultipleTasks: boolean;
 }
 
 const workerManagerDefaultOptions: WorkerManagerOptions = {
-  blockingChannel: false,
+  preventMultipleTasks: false,
 };

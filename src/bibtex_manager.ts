@@ -1,9 +1,11 @@
 // bibtex_manager.ts
 
-import { AuthorOptions, BibTeXDict, BibTeXEntry, HighlightType, JournalReferenceOptions, ParsedAuthor, ParserOptions, Queries } from "types";
+import { AuthorOptions, BibTeXDict, BibTeXEntry, HighlightType, JournalReferenceOptions, ParsedAuthor, ParserOptions, ParserWorkerInputs, ParserWorkerReply, Queries } from "types";
 import { parseUri, posixToFileURL, resolveBookmark } from "utils"
 import { AuthorOptionsDefault, JournalReferenceOptionDefault } from "defaults"
 import BibtexIntegration from "main";
+import { WorkerManager } from "worker_manager";
+import { LoadWorker } from 'inline-workers'; // No need for this file to physically exist
 
 function processTitles(bibEntriesArray:BibTeXEntry[]) {
     bibEntriesArray.forEach((item:BibTeXEntry) => {
@@ -18,6 +20,7 @@ function processTitles(bibEntriesArray:BibTeXEntry[]) {
     });
 }
 
+/*
 function parseAuthors(bibEntriesArray:BibTeXEntry[]) {
     bibEntriesArray.forEach((item:BibTeXEntry) => {
         const authorList = item.fields.author ?? "";
@@ -38,7 +41,7 @@ function parseAuthors(bibEntriesArray:BibTeXEntry[]) {
         
         item.authors = parsedAuthors;
     });    
-}
+}*/
 
 export function getFormattedJournalReference(bibEntry: BibTeXEntry, options: JournalReferenceOptions = JournalReferenceOptionDefault) {
 
@@ -109,8 +112,10 @@ export function getBibDeskUriLink(bibEntry: BibTeXEntry) {
 
 export class BibtexManager {
     private bibEntries: BibTeXDict = {};
-    
+    private bibtexParserWorker:WorkerManager<ParserWorkerReply,ParserWorkerInputs> | null = null;
+
     constructor(private plugin: BibtexIntegration) {
+        this.initializeWorker();
     }
 
     getParserOptions():ParserOptions {
@@ -118,13 +123,22 @@ export class BibtexManager {
             debug_parser: this.plugin.settings.debug_parser
         };
     }
+
+    initializeWorker() {
+        const bibtexWorker = LoadWorker('bibtex');
+        if(!bibtexWorker) return;
+        
+        // Initialize the worker manager with the worker
+        this.bibtexParserWorker = new WorkerManager<ParserWorkerReply, ParserWorkerInputs>(
+            bibtexWorker,
+            { preventMultipleTasks: true }
+        );
+    }
     
     async parseBibtexData(bibtex_data: string) {
-        const parserWorker = this.plugin.getParserWorker();
+        if(!this.bibtexParserWorker) return;
 
-        if(!parserWorker) return;
-
-        const bibEntriesArray = await parserWorker.post({
+        const bibEntriesArray = await this.bibtexParserWorker.post({
             bibtex_data,
             options: this.getParserOptions()
         }) ?? [];

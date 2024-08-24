@@ -8,13 +8,9 @@ import { around } from 'monkey-around';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { BibtexIntegrationSettings, ParserWorkerInputs, ParserWorkerReply } from 'types';
+import { BibtexIntegrationSettings } from 'types';
 import { unwatchFile, watchFile, doesFolderExist, joinPaths, set_bookmark_resolver_path } from 'utils';
 
-// import { LoadWorker } from 'inline-worker';
-import { LoadWorker } from 'inline-workers'; // No need for this file to physically exist
-
-import { WorkerManager } from 'worker_manager';
 import { DEFAULT_SETTINGS } from 'defaults';
 import { InsertCitationFuzzyModal, InsertCitekeyFuzzyModal, OpenPdfFuzzyModal } from 'citekeyFuzzyModal';
 
@@ -24,8 +20,6 @@ export default class BibtexIntegration extends Plugin {
     private pdf_plus_plugin: PdfPlusPlugin | null = null;
     
     public bibtexManager = new BibtexManager(this);
-
-    private bibtexParserWorker:WorkerManager<ParserWorkerReply,ParserWorkerInputs> | null = null;
 
     constructor(app:App,manifest:PluginManifest) {
         super(app,manifest);
@@ -47,10 +41,6 @@ export default class BibtexIntegration extends Plugin {
         set_bookmark_resolver_path(joinPaths(pluginPath,"bookmark_resolver"));
     }
 
-    getParserWorker() {
-        return this.bibtexParserWorker;
-    }
-    
     async onload() {
         await this.loadSettings();
 
@@ -101,42 +91,17 @@ export default class BibtexIntegration extends Plugin {
             }
         });
 
-        /*if(this.settings.import_delay_ms>0) {
+        if(this.settings.import_delay_ms>0) {
             setTimeout(() => {
                 this.parseBibtexFile();
             }, this.settings.import_delay_ms);
         } else {
             this.parseBibtexFile();
-        }*/
+        }
         
         this.app.workspace.onLayoutReady(async () => {
             // Wait for all plugins to be loaded
             this.monkey_patch_PDF_plus();
-            console.log("LOADED");
-
-            try {
-                // GENERATED_WORKER_CODE (this will be replaced with the base64 worker script during the build process)
-
-                // Decode the base64 worker script and create a blob
-                const workerScriptDecoded = atob("");
-                const workerBlob = new Blob([workerScriptDecoded], { type: 'application/javascript' });
-                const workerURL = URL.createObjectURL(workerBlob);
-
-                // Initialize the worker manager with the worker
-                this.bibtexParserWorker = new WorkerManager<ParserWorkerReply, ParserWorkerInputs>(
-                    new Worker(workerURL),
-                    { blockingChannel: true }
-                );
-
-                const res = await this.bibtexParserWorker.post({ bibtex_data: "", options: { debug_parser: false } });
-                console.log("FINISHED WAITING");
-                console.log(res);
-
-                LoadWorker('bibtex');
-
-            } catch (error) {
-                console.error("Error during worker processing:", error);
-            }
         });     
     }
 
