@@ -1,11 +1,16 @@
 // bibtex.worker.ts
 
-import { parseBibtex } from 'bibtex_parser';
-import registerPromiseWorker from 'promise-worker/register';
+import { parseBibtex } from './bibtex_parser';
 import { ParserWorkerInputs, ParserWorkerReply } from 'types';
 
-registerPromiseWorker(
-    async (bibtexData:ParserWorkerInputs): Promise <ParserWorkerReply> => {
-        return await parseBibtex(bibtexData);
-    },
-);
+// Worker code
+self.onmessage = async function (event: MessageEvent) {
+    const msg: ParserWorkerInputs = event.data;
+    try {
+        const parsedData: ParserWorkerReply = await parseBibtex(msg);
+        self.postMessage(parsedData);
+    } catch (error) {
+        self.postMessage({ error });
+    }
+};
+

@@ -22,7 +22,7 @@ function workerScript(): string {
             try {
                 const bibtexData = event.data;
                 console.log("Worker received data:", bibtexData);
-
+                
                 // Simulate BibTeX parsing
                 const result = "Parsed BibTeX: " + bibtexData.bibtex_data;
                 self.postMessage(result);
@@ -144,7 +144,7 @@ export default class BibtexIntegration extends Plugin {
                 );
 
                 // Send data to the worker and wait for the result
-                const res = await this.bibtexParserWorker.post({ bibtex_data: "", options: { debug_parser: false } });
+                const res = await this.bibtexParserWorker.post({ bibtex_data: "hello", options: { debug_parser: false } });
                 console.log("FINISHED WAITING");
                 console.log(res);
 
