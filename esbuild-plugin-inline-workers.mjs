@@ -63,6 +63,7 @@ const inline_workers_plugin = (user_options = {}) => ({
                 Object.keys(inputs).forEach((input) => {
                     dependencies.add(path.resolve(input));  // Track full path to dependencies
                 });
+                dependencies.add(path.resolve(workerFile));
 
                 const workerCode = result.outputFiles[0].text;
                 const workerCodeBase64 = Buffer.from(workerCode).toString('base64');
@@ -107,22 +108,33 @@ ${workerDictCode}
 
         // Ensure worker files and their dependencies are watched in watch mode
         build.onEnd(() => {
-            if (options.watchChangesInWorkers && workerFiles.length > 0) {
-                // Use chokidar to watch the worker files and dependencies for changes
-                console.log([...workerFiles, ...dependencies]);
-                const watcher = chokidar.watch([...workerFiles, ...dependencies], { persistent: true });
+            let currentWatcher = null; // Global reference to the current watcher
 
-                watcher.on('change', async (filePath) => {
+            if (options.watchChangesInWorkers && workerFiles.length > 0) {
+                // Clean up previous watcher if it exists
+                if (currentWatcher) {
+                    currentWatcher.close();
+                    currentWatcher = null;
+                }
+
+                // Use chokidar to watch the worker files and dependencies for changes
+                currentWatcher = chokidar.watch(Array.from(dependencies), { persistent: true });
+
+                currentWatcher.on('change', async (filePath) => {
                     console.log(`[watch] build started (change: "${filePath}")`);
                     // Trigger a rebuild when a worker file or dependency changes
                     await buildWorkers(); // Rebuild workers
                     await options.onWorkersRebuild();
                     console.log(`[watch] build finished`);
+                    currentWatcher.close();
+                    currentWatcher = null;
                 });
 
                 // Stop watching when the process exits
                 process.on('SIGINT', () => {
-                    watcher.close();
+                    if (currentWatcher) {
+                        currentWatcher.close();
+                    }
                     process.exit();
                 });
             }
