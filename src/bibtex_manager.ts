@@ -125,7 +125,7 @@ export class BibtexManager {
     }
 
     initializeWorker() {
-        const bibtexWorker = LoadWorker('bibtex');
+        const bibtexWorker = LoadWorker('bibtex_parser');
         if(!bibtexWorker) return;
         
         // Initialize the worker manager with the worker
@@ -138,12 +138,11 @@ export class BibtexManager {
     async parseBibtexData(bibtex_data: string) {
         if(!this.bibtexParserWorker) return;
 
+        try {
         const bibEntriesArray = await this.bibtexParserWorker.post({
             bibtex_data,
             options: this.getParserOptions()
         }) ?? [];
-
-        console.log(bibEntriesArray);
 
         const t1 = Date.now();
         processTitles(bibEntriesArray);
@@ -163,6 +162,9 @@ export class BibtexManager {
             acc[item.citekey] = item;
             return acc;
         }, {});
+        } catch(error) {
+            console.log("FDICNDO");
+        }
     }
 
     getBibEntry(citekey: string): BibTeXEntry | undefined {

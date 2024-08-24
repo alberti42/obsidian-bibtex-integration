@@ -8,7 +8,7 @@ export class WorkerManager<TResult = unknown, TInput = unknown> {
     constructor(worker: Worker, options: WorkerManagerOptions) {
         this.worker = worker;
         this.blocked = false;
-        this.options = { ...workerManagerDefaultOptions, ...options };
+        this.options = { ...workerManagerDefaultOptions, ...options };   
     }
 
     // Send a message to the worker and return a promise for the result
@@ -23,19 +23,18 @@ export class WorkerManager<TResult = unknown, TInput = unknown> {
             // Store the resolve and reject callbacks in local variables
             const handleMessage = (event: MessageEvent) => {
                 this.blocked = false;
-                // we clean up because the process has finished its duty and it won't send other messages
                 this.worker.removeEventListener('message', handleMessage);  // Clean up event listener
                 resolve(event.data as TResult);  // Resolve with the worker's response
             };
 
+            // Worker encountered an error
             const handleError = (error: ErrorEvent) => {
                 this.blocked = false;
-                // we clean up because the process has finished its duty and it won't send other messages
                 this.worker.removeEventListener('error', handleError);  // Clean up event listener
-                reject(error);  // Reject the promise on error
+                reject(error); // Reject the promise on error
             };
 
-            // Attach the event listeners for message and error
+            // Attach the event listeners for message and error using `addEventListener`
             this.worker.addEventListener('message', handleMessage);
             this.worker.addEventListener('error', handleError);
 

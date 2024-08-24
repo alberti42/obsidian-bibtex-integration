@@ -213,7 +213,7 @@ main
   = blocks:block* { return blocks.filter((item) => item) }
   
 block
-  = bibentry / empty_lines / comment_line / comment_block / loose_line
+  = bibentry / empty_lines / comment_line / comment_block // / loose_line
 
 empty_lines
   = $(empty_line+) { return null; }
@@ -262,7 +262,7 @@ author_list
   = "{" @authors "}"
 
 authors
-  = a:author|.., author_sep| { console.log(a); return a; }
+  = author|.., author_sep|
 
 author_sep
   = " "+ "and"i " "+
