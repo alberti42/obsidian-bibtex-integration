@@ -11,14 +11,11 @@ import * as path from 'path';
 import { BibtexIntegrationSettings, ParserWorkerInputs, ParserWorkerReply } from 'types';
 import { unwatchFile, watchFile, doesFolderExist, joinPaths, set_bookmark_resolver_path } from 'utils';
 
-import { workerScript } from 'inline-worker';
+// import { LoadWorker } from 'workers';
 
-// import LoadWorker from 'web-worker:./bibtex.worker';
 import { WorkerManager } from 'worker_manager';
 import { DEFAULT_SETTINGS } from 'defaults';
 import { InsertCitationFuzzyModal, InsertCitekeyFuzzyModal, OpenPdfFuzzyModal } from 'citekeyFuzzyModal';
-
-// GENERATED_WORKER_CODE
 
 export default class BibtexIntegration extends Plugin {
     settings: BibtexIntegrationSettings = DEFAULT_SETTINGS;
@@ -117,8 +114,11 @@ export default class BibtexIntegration extends Plugin {
             console.log("LOADED");
 
             try {
-                // Create the worker as an inline blob
-                const workerBlob = new Blob([workerScript()], { type: 'application/javascript' });
+                // GENERATED_WORKER_CODE (this will be replaced with the base64 worker script during the build process)
+
+                // Decode the base64 worker script and create a blob
+                const workerScriptDecoded = atob("");
+                const workerBlob = new Blob([workerScriptDecoded], { type: 'application/javascript' });
                 const workerURL = URL.createObjectURL(workerBlob);
 
                 // Initialize the worker manager with the worker
@@ -127,10 +127,11 @@ export default class BibtexIntegration extends Plugin {
                     { blockingChannel: true }
                 );
 
-                // Send data to the worker and wait for the result
-                const res = await this.bibtexParserWorker.post({ bibtex_data: "hello", options: { debug_parser: false } });
+                const res = await this.bibtexParserWorker.post({ bibtex_data: "", options: { debug_parser: false } });
                 console.log("FINISHED WAITING");
                 console.log(res);
+
+                // LoadWorker('bibtex');
 
             } catch (error) {
                 console.error("Error during worker processing:", error);

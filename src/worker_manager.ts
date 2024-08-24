@@ -1,7 +1,5 @@
 // worker_manager.ts
 
-// worker_manager.ts
-
 export class WorkerManager<TResult = unknown, TInput = unknown> {
     private worker: Worker;
     private blocked: boolean;
