@@ -14,7 +14,7 @@ export class WorkerManager<TResult = unknown, TInput = unknown> {
     // Send a message to the worker and return a promise for the result
     async post(message: TInput): Promise<TResult> {
         if (this.options.preventMultipleTasks && this.blocked) {
-            throw new WorkerManagerBlocked();
+            throw new BlockedWorkerError();
         }
 
         this.blocked = true;
@@ -50,14 +50,14 @@ export class WorkerManager<TResult = unknown, TInput = unknown> {
     }
 }
 
-export class WorkerManagerBlocked extends Error {
+class BlockedWorkerError extends Error {
     constructor() {
         super('WorkerManager: discarded message because channel is blocked');
-        Object.setPrototypeOf(this, WorkerManagerBlocked.prototype);
+        Object.setPrototypeOf(this, BlockedWorkerError.prototype);
     }
 }
 
-export interface WorkerManagerOptions {
+interface WorkerManagerOptions {
   /**
    * If true, treat the worker channel as blocking -- when the worker receives
    * a message, no other messages can be sent until the worker sends a message.

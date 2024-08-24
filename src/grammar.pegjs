@@ -213,7 +213,7 @@ main
   = blocks:block* { return blocks.filter((item) => item) }
   
 block
-  = bibentry / empty_lines / comment / loose_line
+  = bibentry / empty_lines / comment_line / comment_block / loose_line
 
 empty_lines
   = $(empty_line+) { return null; }
@@ -241,7 +241,7 @@ fields
   = (@field|.., delimiter| delimiter?)
 
 field
-  = author_field / generic_field / strict_field 
+  = author_field / generic_field / strict_field
 
 author_field
   = (empty_chars @key:"author" empty_chars "=" empty_chars @author_list empty_chars)
@@ -259,16 +259,27 @@ curly_brackets
   = ("{" @$("\\}" / "\\{" / curly_brackets / (!"}" .))* "}")
 
 author_list
-  = ("{" @authors "}")
+  = "{" @authors "}"
 
 authors
-  = a:author|.., author_sep| { return a; }
-  
+  = a:author|.., author_sep| { console.log(a); return a; }
+
 author_sep
   = " "+ "and"i " "+
   
 author
-  = last:author_name first:(first_last_sep @author_name)? {return {first, last};}
+  = last:author_name first:(first_last_sep @author_name)? { 
+    if(!first) {
+      // This should not occur, but some bad bibentry misses the first name
+      const name_parts = last.split(' ');
+      if(name_parts.length>0) {
+        // We check whether the name contains spaces and can be thus split
+        first = name_parts.slice(0, -1).join(' ');
+        last = name_parts[name_parts.length - 1];
+      }
+    }
+    return {first, last};
+  }
 
 author_name
   = char:(curly_brackets_special / (!"}" !author_sep !first_last_sep @.))+ { return char.join(''); }
@@ -277,7 +288,7 @@ curly_brackets_special
   = "{" @special "}"
 
 special
-  = t:$(!"}" .)* {
+  = t:$(curly_brackets_special / (!"}" .))* {
   const accented = accentMap[t.replace(multipleWhiteSpaces,' ')];
   return accented ?? t; 
 }
@@ -285,8 +296,11 @@ special
 first_last_sep
   = " "* "," " "*
   
-comment
+comment_line
   = $(_* "%" loose_line) { return null; }
+
+comment_block
+  = "@comment" $([^ {]*) empty_chars curly_brackets empty_chars newline?
 
 loose_line
   = t:$(([^\n]* newline) ) { return null; }

@@ -143,6 +143,8 @@ export class BibtexManager {
             options: this.getParserOptions()
         }) ?? [];
 
+        console.log(bibEntriesArray);
+
         const t1 = Date.now();
         processTitles(bibEntriesArray);
         const t2 = Date.now();
@@ -161,8 +163,6 @@ export class BibtexManager {
             acc[item.citekey] = item;
             return acc;
         }, {});
-
-        console.log(this.bibEntries);
     }
 
     getBibEntry(citekey: string): BibTeXEntry | undefined {
