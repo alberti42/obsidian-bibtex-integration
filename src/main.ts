@@ -9,7 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { BibtexIntegrationSettings } from 'types';
-import { unwatchFile, watchFile, doesFolderExist, joinPaths, set_bookmark_resolver_path, fileExists } from 'utils';
+import { unwatchFile, watchFile, doesFolderExist, joinPaths, set_bookmark_resolver_path, fileExists, parseFilePath } from 'utils';
 
 import { DEFAULT_SETTINGS } from 'defaults';
 import { InsertCitationFuzzyModal, InsertCitekeyFuzzyModal, OpenPdfFuzzyModal } from 'citekeyFuzzyModal';
@@ -175,7 +175,7 @@ export default class BibtexIntegration extends Plugin {
 
         // watchFile(this.settings.bibtex_filepath,this);
         
-        // this.bibtexManager.parseBibtexData(bibtex_data);
+        this.bibtexManager.parseBibtexData(bibtex_data);
     }
 
     // Function to read the .bib file and return its contents
@@ -237,11 +237,28 @@ class BibtexIntegrationSettingTab extends PluginSettingTab {
         let bibtex_filepath_text:TextComponent;
         bibtex_filepath_setting.addText(text => {
                 bibtex_filepath_text = text;
+                const warningEl = containerEl.createEl('div', { cls: 'mod-warning' });
                 text.setPlaceholder('Filepath')
                 .setValue(this.plugin.settings.bibtex_filepath)
                 .onChange(async (value) => {
-                    this.plugin.settings.bibtex_filepath = value;
-                    await this.plugin.saveSettings();
+                    // Remove any previous warning text
+                    warningEl.textContent = '';
+                    const normalizedPath = path.normalize(value);
+                    const parsedPath = parseFilePath(normalizedPath);
+
+                    if (parsedPath.ext !== ".bib") {
+                        warningEl.textContent = 'Please choose a BibTex file with .bib extension.';
+                        warningEl.style.display = 'block';
+                    }
+                    else if (!await fileExists(normalizedPath)) {
+                        warningEl.textContent = 'Please enter the path of an existing BibTex file in your vault.';
+                        warningEl.style.display = 'block';
+                    } else {
+                        // Hide the warning and save the valid value
+                        warningEl.style.display = 'none';
+                        this.plugin.settings.bibtex_filepath = value;
+                        await this.plugin.saveSettings();
+                    }
                 })
             });
 
