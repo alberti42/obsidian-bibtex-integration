@@ -65,7 +65,13 @@ const buildMain = async () => {
                     onWorkersRebuild
                 }),
             {   
-                // 
+                // We need to apply a workaround that replaces platform-specific imports like
+                // fsevents. fsevents is a native module used only on macOS to provide efficient
+                // file system watching. The goal was to ensure that chokidar doesn't rely on
+                // fsevents and uses original-fs when deployed in Electron (specifically in
+                // Obsidian, which runs on Electron). Changes: We replaced fsevents with null and
+                // disabled the native FsEventsHandler to make chokidar platform-independent. We
+                // also replaced fs with original-fs to maintain Electron compatibility.
                 name: 'replace-fsevents',
                 setup(build) {
                     // Hook into the resolve phase
