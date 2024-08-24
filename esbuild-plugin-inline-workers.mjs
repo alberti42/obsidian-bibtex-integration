@@ -22,6 +22,7 @@ const inline_workers_plugin = (user_options = {}) => ({
     setup(build) {
         const options = { ...default_options, ...user_options };
         let workerFiles = [];
+        let dependencies = new Set();
 
         // Step 1: Find and process all .worker.ts files
         const findWorkerFiles = async (dir) => {
@@ -42,6 +43,7 @@ const inline_workers_plugin = (user_options = {}) => ({
         const buildWorkers = async () => {
             workerFiles = await findWorkerFiles(options.srcDir); // Track the worker files
             const workerDict = {};
+            dependencies.clear(); // Clear the dependencies before rebuilding
 
             for (let workerFile of workerFiles) {
                 const workerName = path.basename(workerFile, options.workerExtension); // Get the worker name
@@ -49,10 +51,17 @@ const inline_workers_plugin = (user_options = {}) => ({
                 const result = await esbuild.build({
                     entryPoints: [workerFile],
                     bundle: true,
+                    metafile: true,  // Get the metadata for dependencies
                     write: false,
                     platform: 'browser',
                     format: 'iife',
                     minify: options.production,
+                });
+
+                // Collect dependencies from the metadata
+                const inputs = result.metafile.inputs;
+                Object.keys(inputs).forEach((input) => {
+                    dependencies.add(path.resolve(input));  // Track full path to dependencies
                 });
 
                 const workerCode = result.outputFiles[0].text;
@@ -96,15 +105,16 @@ ${workerDictCode}
             return { contents: loadWorkerCode, loader: 'ts' };
         });
 
-        // Ensure worker files are watched in watch mode
+        // Ensure worker files and their dependencies are watched in watch mode
         build.onEnd(() => {
             if (options.watchChangesInWorkers && workerFiles.length > 0) {
-                // Use chokidar to watch the worker files for changes
-                const watcher = chokidar.watch(workerFiles, { persistent: true });
+                // Use chokidar to watch the worker files and dependencies for changes
+                console.log([...workerFiles, ...dependencies]);
+                const watcher = chokidar.watch([...workerFiles, ...dependencies], { persistent: true });
 
                 watcher.on('change', async (filePath) => {
                     console.log(`[watch] build started (change: "${filePath}")`);
-                    // Trigger a rebuild when a worker file changes using the context
+                    // Trigger a rebuild when a worker file or dependency changes
                     await buildWorkers(); // Rebuild workers
                     await options.onWorkersRebuild();
                     console.log(`[watch] build finished`);
