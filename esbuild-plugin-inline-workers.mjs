@@ -15,8 +15,8 @@ const default_options = {
 };
 
 // Custom esbuild plugin to generate worker code dynamically
-const inline_web_worker = (user_options = {}) => ({
-    name: 'inline_web_worker',
+const inline_workers_plugin = (user_options = {}) => ({
+    name: 'inline-workers',
     setup(build) {
         const options = { ...default_options, ...user_options };
 
@@ -89,10 +89,10 @@ export function LoadWorker(workerName) {
 
 ${workerDictCode}
 `;
-
+            console.log(loadWorkerCode);
             return { contents: loadWorkerCode, loader: 'ts' };
         });
     },
 });
 
-export { inline_web_worker as default };
+export { inline_workers_plugin as default };

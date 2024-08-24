@@ -4,7 +4,7 @@ import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
 import copy from 'esbuild-plugin-copy';
-import inline_web_worker from './esbuild-plugin-inline-worker.mjs'; // Import the plugin
+import inline_web_workers from './esbuild-plugin-inline-workers.mjs'; // Import the plugin
 
 // Banner message for the generated/bundled files
 const banner = `
@@ -51,7 +51,7 @@ const buildMain = async () => {
         treeShaking: true,
         outdir,
         plugins: [
-            inline_web_worker({
+            inline_web_workers({
                 production: prod,
                 srcDir: './src',
             }),
