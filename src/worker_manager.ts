@@ -9,10 +9,6 @@ export class WorkerManager<TResult = unknown, TInput = unknown> {
         this.worker = worker;
         this.blocked = false;
         this.options = { ...workerManagerDefaultOptions, ...options };
-        
-        // Bind worker message handling
-        this.worker.onmessage = (event) => this.handleWorkerMessage(event);
-        this.worker.onerror = (error) => this.handleWorkerError(error);
     }
 
     // Send a message to the worker and return a promise for the result
@@ -46,12 +42,6 @@ export class WorkerManager<TResult = unknown, TInput = unknown> {
             // Post the message to the worker
             this.worker.postMessage(message);
         });
-    }
-
-    // Handle worker messages by resetting the blocked flag and resolving the promise
-    private handleWorkerMessage(event: MessageEvent) {
-        // This should no longer be needed as it's handled in the promise post method
-        // left empty in case you want to add additional logic for generic events
     }
 
     // Handle worker errors by resetting the blocked flag and rejecting the promise
