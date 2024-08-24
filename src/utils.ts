@@ -5,11 +5,11 @@ import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
 import { BibTeXEntry, isBookmark, ParsedPath, ParsedUri, Queries } from 'types';
 import { pathToFileURL } from 'url';
-// import * as chokidar from 'chokidar'; // to watch for file changes
+import * as chokidar from 'chokidar'; // to watch for file changes
 import BibtexIntegration from 'main';
 import { TAbstractFile, TFile, TFolder, Vault } from 'obsidian';
 
-// let watcher: chokidar.FSWatcher | null = null;
+let watcher: chokidar.FSWatcher | null = null;
 let watched_filepath: string | null = null;
 
 export let bookmark_resolver_path = "";
@@ -218,7 +218,7 @@ export async function resolveBookmark(bibEntry: BibTeXEntry, bdsk_file: string):
 
 /* watch file changes */
 export async function watchFile(filepath: string, plugin:BibtexIntegration) {
-/*
+
     // watch the same file already watched
     if(watched_filepath && watched_filepath === filepath) return;
 
@@ -251,7 +251,7 @@ export async function watchFile(filepath: string, plugin:BibtexIntegration) {
         }
     );
 
-    watched_filepath = filepath;*/
+    watched_filepath = filepath;
 }
 
 export async function unwatchFile() {

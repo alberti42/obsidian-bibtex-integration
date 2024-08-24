@@ -173,7 +173,7 @@ export default class BibtexIntegration extends Plugin {
             return;
         }
 
-        // watchFile(this.settings.bibtex_filepath,this);
+        watchFile(this.settings.bibtex_filepath,this);
         
         this.bibtexManager.parseBibtexData(bibtex_data);
     }
