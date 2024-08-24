@@ -243,7 +243,7 @@ export async function watchFile(filepath: string, plugin:BibtexIntegration) {
             pollInterval: 100,
         },
     };
-
+    
     watcher = chokidar.watch(filepath,watchOptions)
         .on('change', () => {
             if(plugin.settings.debug_parser) console.log(`The BibTex file ${watched_filepath} has changed and will be parsed agained.`)

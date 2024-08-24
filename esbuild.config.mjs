@@ -5,6 +5,7 @@ import process from "process";
 import builtins from "builtin-modules";
 import copy from 'esbuild-plugin-copy';
 import inline_web_workers from './esbuild-plugin-inline-workers.mjs'; // Import the plugin
+import { promises as fs } from 'fs';
 
 // Banner message for the generated/bundled files
 const banner = `
@@ -47,6 +48,7 @@ const buildMain = async () => {
             "@lezer/common",
             "@lezer/highlight",
             "@lezer/lr",
+            "original-fs",  // Mark original-fs as external so it's not bundled
             ...builtins
         ],
         format: "cjs", // Maintain cjs format for Obsidian compatibility
@@ -62,6 +64,37 @@ const buildMain = async () => {
                     srcDir: './src',
                     onWorkersRebuild
                 }),
+            {   
+                // 
+                name: 'replace-fsevents',
+                setup(build) {
+                    // Hook into the resolve phase
+                    build.onResolve({ filter: /fsevents/ }, () => {
+                        return { path: 'null', namespace: 'fsevents' };
+                    });
+
+                    // Define what happens when the module is loaded
+                    build.onLoad({ filter: /.*/, namespace: 'fsevents' }, () => {
+                        return {
+                            contents: `module.exports = null;`,
+                            loader: 'js',
+                        };
+                    });
+
+                    // Similarly replace the `require('fs')` with `require('original-fs')`
+                    build.onLoad({ filter: /node_modules\/chokidar\/.*\.js$/ }, async (args) => {
+                        let source = await fs.readFile(args.path, 'utf8');
+                        source = source.replace(/const canUseFsEvents = FsEventsHandler\.canUse\(\);/g, 'const canUseFsEvents = false;');
+                        source = source.replace(/require\('fsevents'\)/g, 'null');
+                        source = source.replace(/require\('fs'\)/g, "require('original-fs')");
+                        
+                        return {
+                            contents: source,
+                            loader: 'js'
+                        };
+                    });
+                }
+            },
             copy({
                 assets: {
                     from: ['./manifest.json'],
