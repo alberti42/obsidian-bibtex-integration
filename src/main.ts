@@ -246,11 +246,15 @@ class BibtexIntegrationSettingTab extends PluginSettingTab {
                     const normalizedPath = path.normalize(value);
                     const parsedPath = parseFilePath(normalizedPath);
 
-                    if (parsedPath.ext !== ".bib") {
+                    // when the field is empty, we don't consider it as an error,
+                    // but simply as if the .bib file was not provided yet
+                    const isEmpty = value === "";
+
+                    if (!isEmpty && parsedPath.ext !== ".bib") {
                         warningEl.textContent = 'Please choose a BibTex file with .bib extension.';
                         warningEl.style.display = 'block';
                     }
-                    else if (!await fileExists(normalizedPath)) {
+                    else if (!isEmpty && !await fileExists(normalizedPath)) {
                         warningEl.textContent = 'Please enter the path of an existing BibTex file in your vault.';
                         warningEl.style.display = 'block';
                     } else {

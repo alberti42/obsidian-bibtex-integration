@@ -1,6 +1,6 @@
 // bibtex_parser.worker.ts
 
-import { ParserWorkerInput, ParserWorkerOutput, WorkerExitStatus, WorkerErrorMsg, WorkerReply } from 'types';
+import { ParserWorkerInput, WorkerExitStatus, WorkerErrorMsg, WorkerReply } from 'types';
 import { SyntaxError } from "peggy";
 import { parse, SyntaxError as SyntaxErrorFnc } from "./peggy.mjs"
 
