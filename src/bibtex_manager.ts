@@ -161,6 +161,8 @@ export class BibtexManager {
             acc[item.citekey] = item;
             return acc;
         }, {});
+
+        console.log(this.bibEntries);
     }
 
     getBibEntry(citekey: string): BibTeXEntry | undefined {

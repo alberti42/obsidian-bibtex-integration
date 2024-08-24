@@ -4,10 +4,9 @@ import { parse } from "./peggy.mjs"
 import { ParserWorkerInputs, ParserWorkerReply } from 'types';
 
 export async function parseBibtex(msg:ParserWorkerInputs): Promise<ParserWorkerReply> {
-    
     const bibtexData = msg.bibtex_data;
     const debug_parser = msg.options.debug_parser;
-
+    
     const t2 = Date.now();
     const parsedData = parse(bibtexData, {});
     const t3 = Date.now();

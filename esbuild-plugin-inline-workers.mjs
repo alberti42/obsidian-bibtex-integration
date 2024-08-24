@@ -6,18 +6,22 @@ import esbuild from "esbuild";
 import fs from 'fs/promises';
 import path from 'path';
 import { Buffer } from 'buffer';
+import chokidar from 'chokidar';
 
 const default_options = {
     production: false,
     srcDir: '.',
     workerExtension: '.worker.ts',
+    watchChangesInWorkers: true, 
+    onWorkersRebuild: async () => {},
 };
 
 // Custom esbuild plugin to generate worker code dynamically
 const inline_workers_plugin = (user_options = {}) => ({
-    name: 'inline-workers',
+    name: 'inline_workers',
     setup(build) {
         const options = { ...default_options, ...user_options };
+        let workerFiles = [];
 
         // Step 1: Find and process all .worker.ts files
         const findWorkerFiles = async (dir) => {
@@ -36,11 +40,11 @@ const inline_workers_plugin = (user_options = {}) => ({
         };
 
         const buildWorkers = async () => {
-            const workerFiles = await findWorkerFiles(options.srcDir);
+            workerFiles = await findWorkerFiles(options.srcDir); // Track the worker files
             const workerDict = {};
 
             for (let workerFile of workerFiles) {
-                const workerName = path.basename(workerFile, options.workerExtension); // Get the worker name (e.g., 'bibtex' from 'bibtex.worker.ts')
+                const workerName = path.basename(workerFile, options.workerExtension); // Get the worker name
                 
                 const result = await esbuild.build({
                     entryPoints: [workerFile],
@@ -59,15 +63,15 @@ const inline_workers_plugin = (user_options = {}) => ({
             return workerDict;
         };
 
-        // Mark the virtual module for 'workers' so esbuild knows how to handle it
+        // Mark the virtual module for 'inline-workers' so esbuild knows how to handle it
         build.onResolve({ filter: /^inline-workers$/ }, () => {
-            return { path: 'inline-workers', namespace: 'inline-workers' };
+            return { path: 'inline-workers', namespace: 'inline-worker' };
         });
 
-        // Dynamically generate 'workers' content when it's loaded
-        build.onLoad({ filter: /^inline-workers$/, namespace: 'inline-workers' }, async () => {
+        // Dynamically generate 'inline-workers' content when it's loaded
+        build.onLoad({ filter: /^inline-workers$/, namespace: 'inline-worker' }, async () => {
             // Find and build worker files
-            const workerDict = await buildWorkers(); // Get the worker dictionary
+            const workerDict = await buildWorkers();
 
             // Generate the worker dictionary code
             let workerDictCode = `const _worker_dict = {};\n`;
@@ -88,7 +92,30 @@ export function LoadWorker(workerName) {
 
 ${workerDictCode}
 `;
+
             return { contents: loadWorkerCode, loader: 'ts' };
+        });
+
+        // Ensure worker files are watched in watch mode
+        build.onEnd(() => {
+            if (options.watchChangesInWorkers && workerFiles.length > 0) {
+                // Use chokidar to watch the worker files for changes
+                const watcher = chokidar.watch(workerFiles, { persistent: true });
+
+                watcher.on('change', async (filePath) => {
+                    console.log(`[watch] build started (change: "${filePath}")`);
+                    // Trigger a rebuild when a worker file changes using the context
+                    await buildWorkers(); // Rebuild workers
+                    await options.onWorkersRebuild();
+                    console.log(`[watch] build finished`);
+                });
+
+                // Stop watching when the process exits
+                process.on('SIGINT', () => {
+                    watcher.close();
+                    process.exit();
+                });
+            }
         });
     },
 });

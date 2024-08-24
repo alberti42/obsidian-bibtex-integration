@@ -98,7 +98,7 @@ export default class BibtexIntegration extends Plugin {
         } else {
             this.parseBibtexFile();
         }
-        
+
         this.app.workspace.onLayoutReady(async () => {
             // Wait for all plugins to be loaded
             this.monkey_patch_PDF_plus();
@@ -171,8 +171,6 @@ export default class BibtexIntegration extends Plugin {
 
         // watchFile(this.settings.bibtex_filepath,this);
         
-        this.bibtexManager = new BibtexManager(this);
-
         this.bibtexManager.parseBibtexData(bibtex_data);
     }
 

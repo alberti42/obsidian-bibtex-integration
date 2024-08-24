@@ -20,7 +20,13 @@ const prod = process.argv[2] === "production";
 // Get the output directory
 const outdir = 'dist';
 
+
 const buildMain = async () => {
+    // Set up rebuild logic
+    const onWorkersRebuild = async () => {
+        await context.rebuild();
+    };
+
     // Start the main build process
     const context = await esbuild.context({
         banner: {
@@ -51,10 +57,12 @@ const buildMain = async () => {
         treeShaking: true,
         outdir,
         plugins: [
-            inline_web_workers({
-                production: prod,
-                srcDir: './src',
-            }),
+            inline_web_workers(
+                {
+                    production: prod,
+                    srcDir: './src',
+                    onWorkersRebuild
+                }),
             copy({
                 assets: {
                     from: ['./manifest.json'],
