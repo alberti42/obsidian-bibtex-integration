@@ -2,5 +2,8 @@
 
 declare module 'inline-worker' {
     export function LoadWorker(workerName:string): string;
-    export function workerScript(): string;
+}
+
+declare module 'workers' {
+    export function LoadWorker(workerName: string): Worker | null;
 }

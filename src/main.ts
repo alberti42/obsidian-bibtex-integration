@@ -11,7 +11,8 @@ import * as path from 'path';
 import { BibtexIntegrationSettings, ParserWorkerInputs, ParserWorkerReply } from 'types';
 import { unwatchFile, watchFile, doesFolderExist, joinPaths, set_bookmark_resolver_path } from 'utils';
 
-// import { LoadWorker } from 'workers';
+// import { LoadWorker } from 'inline-worker';
+import { LoadWorker } from 'workers'; // No need for this file to physically exist
 
 import { WorkerManager } from 'worker_manager';
 import { DEFAULT_SETTINGS } from 'defaults';
@@ -131,7 +132,7 @@ export default class BibtexIntegration extends Plugin {
                 console.log("FINISHED WAITING");
                 console.log(res);
 
-                // LoadWorker('bibtex');
+                LoadWorker('bibtex');
 
             } catch (error) {
                 console.error("Error during worker processing:", error);

@@ -11,15 +11,15 @@ const default_options = {
     production: false,
     srcDir: '.',
     workerExtension: '.worker.ts',
-    fileBundlingWorkers: 'workers.ts',
-}
+    virtualModuleName: 'workers', // Virtual module name, no file needed
+};
 
-// Custom esbuild plugin to inject worker code
+// Custom esbuild plugin to generate worker code dynamically
 const inline_web_worker = (user_options = {}) => ({
     name: 'inline_web_worker',
     setup(build) {
-        const options = {...default_options,user_options};
-        console.log(RegExp(`${path.join(options.srcDir,options.fileBundlingWorkers)}$`));
+        const options = { ...default_options, ...user_options };
+
         // Step 1: Find and process all .worker.ts files
         const findWorkerFiles = async (dir) => {
             let files = await fs.readdir(dir, { withFileTypes: true });
@@ -60,22 +60,25 @@ const inline_web_worker = (user_options = {}) => ({
             return workerDict;
         };
 
-        build.onLoad({ filter: /main.ts$/ }, async (args) => {
-            console.log("TRUGGE");
+        // Mark the virtual module for 'workers' so esbuild knows how to handle it
+        build.onResolve({ filter: /^workers$/ }, () => {
+            return { path: 'workers', namespace: 'inline-worker' };
+        });
 
+        // Dynamically generate 'workers' content when it's loaded
+        build.onLoad({ filter: /^workers$/, namespace: 'inline-worker' }, async () => {
             // Find and build worker files
             const workerDict = await buildWorkers(); // Get the worker dictionary
 
             // Generate the worker dictionary code
-            let workerDictCode = `\nconst _worker_dict = {};\n`;
+            let workerDictCode = `const _worker_dict = {};\n`;
             for (const [workerName, workerCodeBase64] of Object.entries(workerDict)) {
-                workerDictCode += `\n_worker_dict['${workerName}'] = '${workerCodeBase64}';\n`;
+                workerDictCode += `_worker_dict['${workerName}'] = '${workerCodeBase64}';\n`;
             }
 
             // Generate the LoadWorker function code
             const loadWorkerCode = `
-
-function LoadWorker(workerName) {
+export function LoadWorker(workerName) {
     const workerScriptBase64 = _worker_dict[workerName];
     if (!workerScriptBase64) return null;
     const workerScriptDecoded = atob(workerScriptBase64);
@@ -83,19 +86,11 @@ function LoadWorker(workerName) {
     const workerURL = URL.createObjectURL(workerBlob);
     return new Worker(workerURL);
 }
+
+${workerDictCode}
 `;
 
-            // Read the main.ts content
-            let source = await fs.readFile(args.path, 'utf8');
-
-            // Combine worker dictionary code and loader function
-            const workerBlobCode = loadWorkerCode + workerDictCode;
-
-            // Replace placeholder with the generated worker code
-            source = source.replace(/(?<=\/\/ AUTOMATICALLY GENERATED CODE FOR WORKERS[\n\r]*)[\s\S]*/, workerBlobCode);
-            console.log(source);
-
-            return { contents: source, loader: 'ts' };
+            return { contents: loadWorkerCode, loader: 'ts' };
         });
     },
 });
