@@ -149,7 +149,7 @@ export class BibtexManager {
             }) ?? [];
         } catch(error) {
             new Notice("An error occurred when parsing the BibTex file. Check the development console for more details.");
-            console.log(error);
+            console.error(error);
             return;
         }
 
