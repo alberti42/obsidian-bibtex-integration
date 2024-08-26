@@ -11,7 +11,7 @@ import * as path from 'path';
 import { BibtexIntegrationSettings } from 'types';
 import { unwatchFile, watchFile, doesFolderExist, joinPaths, set_bookmark_resolver_path, fileExists, parseFilePath } from 'utils';
 
-import { DEFAULT_SETTINGS } from 'defaults';
+import { DEFAULT_BIBTEX_CONTENT, DEFAULT_SETTINGS } from 'defaults';
 import { InsertCitationFuzzyModal, InsertCitekeyFuzzyModal, OpenPdfFuzzyModal } from 'citekeyFuzzyModal';
 
 export default class BibtexIntegration extends Plugin {
@@ -170,6 +170,7 @@ export default class BibtexIntegration extends Plugin {
                 errorMsg = `${error}`;
             }
             console.error(`Error when loading BibTex file ${this.settings.bibtex_filepath.trim()}:`, errorMsg);
+            this.bibtexManager.parseBibtexData(DEFAULT_BIBTEX_CONTENT);
             return;
         }
 
@@ -187,7 +188,7 @@ export default class BibtexIntegration extends Plugin {
             throw new Error("file does not exist.")
         }
         try {
-            const data = await fs.promises.readFile(this.settings.bibtex_filepath, 'utf8');
+            const data = await fs.promises.readFile(this.settings.bibtex_filepath + "d", 'utf8');
             return data;
         } catch (err) {
             console.error("Error reading file:", err);
