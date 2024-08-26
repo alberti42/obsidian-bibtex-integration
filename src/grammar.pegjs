@@ -250,7 +250,7 @@ strict_field
   = (empty_chars @key:$[^= ]+ empty_chars "=" empty_chars @$[^, ]+ empty_chars)
   
 generic_field
-  = (empty_chars @key:$[^= ]+ empty_chars "=" empty_chars @value:curly_brackets empty_chars)
+  = (empty_chars @(!"author" @key:$[^= ]+) empty_chars "=" empty_chars @value:curly_brackets empty_chars)
 
 delimiter
   = empty_chars "," empty_chars
@@ -268,7 +268,7 @@ author_sep
   = " "+ "and"i " "+
   
 author
-  = last:author_name first:(first_last_sep @author_name)? { 
+  = last:author_last_name first:(first_last_sep @author_first_name)? { 
     if(!first) {
       // This should not occur, but some bad bibentry misses the first name
       const name_parts = last.split(' ');
@@ -281,8 +281,11 @@ author
     return {first, last};
   }
 
-author_name
+author_last_name
   = char:(curly_brackets_special / (!"}" !author_sep !first_last_sep @.))+ { return char.join(''); }
+
+author_first_name
+  = char:(curly_brackets_special / (!"}" !author_sep @.))+ { return char.join(''); }
 
 curly_brackets_special
   = "{" @special "}"

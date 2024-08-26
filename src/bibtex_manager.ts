@@ -79,9 +79,11 @@ export function getFormattedJournalReference(bibEntry: BibTeXEntry, options: Jou
     return journalRef;
 }
 
-export function getFormattedAuthors(bibEntry: BibTeXEntry, options: AuthorOptions = AuthorOptionsDefault) {
+export function getFormattedAuthors(bibEntry: BibTeXEntry, options: AuthorOptions = AuthorOptionsDefault):string {
 
     const authors = bibEntry.authors;
+
+    if(authors === undefined) return "";
 
     const formattedAuthors = authors.map((author:ParsedAuthor):string => {
         if(options.onlyLastName) {
@@ -89,7 +91,7 @@ export function getFormattedAuthors(bibEntry: BibTeXEntry, options: AuthorOption
         } else {
             return `${author.first} ${author.last}`; // Format: "Initials LastName"    
         }   
-    })
+    });
 
     if (options.shortList && formattedAuthors.length > 2) {
         return `${formattedAuthors[0]} et al.`;
