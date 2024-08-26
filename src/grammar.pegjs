@@ -244,13 +244,13 @@ field
   = author_field / generic_field / strict_field
 
 author_field
-  = (empty_chars @key:"author" empty_chars "=" empty_chars @author_list empty_chars)
+  = f:(empty_chars @key:"author"i empty_chars "=" empty_chars @author_list:author_list empty_chars) { return ["author", f[1]]; } 
 
 strict_field
   = (empty_chars @key:$[^= ]+ empty_chars "=" empty_chars @$[^, ]+ empty_chars)
   
 generic_field
-  = (empty_chars @(!"author" @key:$[^= ]+) empty_chars "=" empty_chars @value:curly_brackets empty_chars)
+  = f:(empty_chars @(!"author"i @key:$[^= ]+) empty_chars "=" empty_chars @value:curly_brackets empty_chars) { return [f[0].toLowerCase(), f[1]]; } 
 
 delimiter
   = empty_chars "," empty_chars
