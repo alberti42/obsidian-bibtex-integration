@@ -170,7 +170,10 @@ export default class BibtexIntegration extends Plugin {
                 errorMsg = `${error}`;
             }
             console.error(`Error when loading BibTex file ${this.settings.bibtex_filepath.trim()}:`, errorMsg);
-            this.bibtexManager.parseBibtexData(DEFAULT_BIBTEX_CONTENT);
+            if(this.settings.use_demo_entries) {
+                this.bibtexManager.parseBibtexData(DEFAULT_BIBTEX_CONTENT);
+                if(this.settings.debug_parser) console.log("No user-provided BibTex file was found. Using demo entries instead.")
+            }
             return;
         }
 
@@ -188,7 +191,7 @@ export default class BibtexIntegration extends Plugin {
             throw new Error("file does not exist.")
         }
         try {
-            const data = await fs.promises.readFile(this.settings.bibtex_filepath + "d", 'utf8');
+            const data = await fs.promises.readFile(this.settings.bibtex_filepath, 'utf8');
             return data;
         } catch (err) {
             console.error("Error reading file:", err);
@@ -324,6 +327,35 @@ class BibtexIntegrationSettingTab extends PluginSettingTab {
                 });
         });
 
+
+        const use_demo_entries_setting = new Setting(containerEl)
+            .setName('Use demo entries')
+            .setDesc('If this option is enabled, a few BibTex entries are used for demonstration purposes when no BibTex file is provided yet.');
+
+        let use_demo_entries_toggle: ToggleComponent;
+        use_demo_entries_setting.addToggle(toggle => {
+            use_demo_entries_toggle = toggle;
+            toggle
+            .setValue(this.plugin.settings.use_demo_entries)
+            .onChange(async (value: boolean) => {
+                this.plugin.settings.use_demo_entries = value;
+                this.plugin.saveSettings();
+            })
+        });
+
+        use_demo_entries_setting.addExtraButton((button) => {
+            button
+                .setIcon("reset")
+                .setTooltip("Reset to default value")
+                .onClick(() => {
+                    const value = DEFAULT_SETTINGS.use_demo_entries;
+                    use_demo_entries_toggle.setValue(value);
+                    this.plugin.settings.use_demo_entries = value;
+                    this.plugin.saveSettings();
+                });
+        });
+
+
         const debug_parser_setting = new Setting(containerEl)
             .setName('Debug BibTex parser')
             .setDesc('If this option is enabled, information about the parsed BibTex files are provided in the developed console.');
@@ -346,7 +378,7 @@ class BibtexIntegrationSettingTab extends PluginSettingTab {
                 .setTooltip("Reset to default value")
                 .onClick(() => {
                     const value = DEFAULT_SETTINGS.debug_parser;
-                    debug_parser_toggle.setValue(DEFAULT_SETTINGS.debug_parser);
+                    debug_parser_toggle.setValue(value);
                     this.plugin.settings.debug_parser = value;
                     this.plugin.saveSettings();
                 });
