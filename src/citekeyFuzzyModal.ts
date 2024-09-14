@@ -104,8 +104,8 @@ abstract class BibEntriesFuzzyModal extends FuzzySuggestModal <BibTeXEntry> {
 
 	applyWidthSetting() {
         const recentFilesPrompt = document.querySelector('.prompt') as HTMLElement;
-        if (recentFilesPrompt && this.plugin.settings.widthRecentList) {
-            recentFilesPrompt.style.width = `${this.plugin.settings.widthRecentList}px`;
+        if (recentFilesPrompt && this.plugin.settings.widthSearchModal) {
+            recentFilesPrompt.style.width = `${this.plugin.settings.widthSearchModal}px`;
         }
     }
 
@@ -362,8 +362,8 @@ export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPathWithIndex> {
 
     applyWidthSetting() {
         const recentFilesPrompt = document.querySelector('.prompt') as HTMLElement;
-        if (recentFilesPrompt && this.plugin.settings.widthRecentList) {
-            recentFilesPrompt.style.width = `${this.plugin.settings.widthRecentList}px`;
+        if (recentFilesPrompt && this.plugin.settings.widthSearchModal) {
+            recentFilesPrompt.style.width = `${this.plugin.settings.widthSearchModal}px`;
         }
     }
 

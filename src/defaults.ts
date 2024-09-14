@@ -6,7 +6,7 @@ export const DEFAULT_SETTINGS: BibtexIntegrationSettings = {
     bibtex_filepath: '',
     import_delay_ms: 1000,
     debug_parser: false,
-    widthRecentList: 1000,
+    widthSearchModal: 1000,
     pdf_folder: '/',
     use_demo_entries: true,
     organize_by_years: true,
