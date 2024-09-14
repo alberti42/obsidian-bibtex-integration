@@ -34,6 +34,7 @@ export interface BibtexIntegrationSettings {
     debug_parser: boolean;
     widthRecentList: number;
     pdf_folder: string;
+    use_demo_entries: boolean,
     organize_by_years: boolean;
 }
 

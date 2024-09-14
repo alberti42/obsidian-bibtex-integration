@@ -32,7 +32,7 @@ export class WorkerManager<TResult = unknown, TInput = unknown> {
                     resolve(event.data.output);  // Resolve with the worker's response
                     break;
                 case WorkerExitStatus.Fail:
-                    reject(event.data.output);  // Resolve with the worker's response
+                    reject(event.data.error);  // Resolve with the worker's response
                     break;
                 }
             };

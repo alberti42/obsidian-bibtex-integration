@@ -70,8 +70,7 @@ self.onmessage = function (event: MessageEvent) {
                 }
             }
             console.error(selectedLines);
-            console.error(error);
-
+            
             const errorInfo: WorkerErrorMsg = {
                 errorName: error.name,
                 errorMsg: `${error}`,
