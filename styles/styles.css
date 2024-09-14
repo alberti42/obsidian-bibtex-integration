@@ -15,12 +15,12 @@
 }
 
 .bibtex-integration-authors {
-    flex: 0 0 10%; /* Fixed 20% width for authors */
+    flex: 0 0 10%; /* Fixed 10% width for authors */
     text-overflow: ellipsis; /* Show ellipsis for overflowed text */
 }
 
 .bibtex-integration-title {
-    flex: 0 0 55%; /* Fixed 40% width for title */
+    flex: 0 0 55%; /* Fixed 55% width for title */
     font-weight: var(--font-semibold);
     text-overflow: ellipsis; /* Show ellipsis for overflowed text */
 }
