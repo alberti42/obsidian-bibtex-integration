@@ -99,15 +99,7 @@ abstract class BibEntriesFuzzyModal extends FuzzySuggestModal <BibTeXEntry> {
 		super.onOpen();
 		this.inputEl.focus();
 		this.containerEl.addEventListener('keydown', this.handleKeyDown);
-		this.applyWidthSetting();
 	}
-
-	applyWidthSetting() {
-        const recentFilesPrompt = document.querySelector('.prompt') as HTMLElement;
-        if (recentFilesPrompt && this.plugin.settings.widthRecentList) {
-            recentFilesPrompt.style.width = `${this.plugin.settings.widthRecentList}px`;
-        }
-    }
 
 	onClose() {
 		this.containerEl.removeEventListener('keydown', this.handleKeyDown);
