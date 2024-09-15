@@ -32,7 +32,6 @@ export interface BibtexIntegrationSettings {
     bibtex_filepath: string;
     import_delay_ms: number;
     debug_parser: boolean;
-    widthSearchModal: number;
     pdf_folder: string;
     use_demo_entries: boolean,
     organize_by_years: boolean;

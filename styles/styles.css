@@ -1,5 +1,9 @@
 /* styles.css */
 
+.bibtex-integration {
+	width: 100%;
+}
+
 .bibtex-integration-suggestions {
     display: flex;
     justify-content: space-between; /* Distribute space between items */

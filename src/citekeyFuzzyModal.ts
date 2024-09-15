@@ -99,15 +99,8 @@ abstract class BibEntriesFuzzyModal extends FuzzySuggestModal <BibTeXEntry> {
 		super.onOpen();
 		this.inputEl.focus();
 		this.containerEl.addEventListener('keydown', this.handleKeyDown);
-		this.applyWidthSetting();
+		this.modalEl.classList.add('bibtex-integration');
 	}
-
-	applyWidthSetting() {
-        const recentFilesPrompt = document.querySelector('.prompt') as HTMLElement;
-        if (recentFilesPrompt && this.plugin.settings.widthSearchModal) {
-            recentFilesPrompt.style.width = `${this.plugin.settings.widthSearchModal}px`;
-        }
-    }
 
 	onClose() {
 		this.containerEl.removeEventListener('keydown', this.handleKeyDown);
@@ -357,14 +350,7 @@ export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPathWithIndex> {
         super.onOpen();
         this.inputEl.focus();
         this.containerEl.addEventListener('keydown', this.handleKeyDown);
-        this.applyWidthSetting();
-    }
-
-    applyWidthSetting() {
-        const recentFilesPrompt = document.querySelector('.prompt') as HTMLElement;
-        if (recentFilesPrompt && this.plugin.settings.widthSearchModal) {
-            recentFilesPrompt.style.width = `${this.plugin.settings.widthSearchModal}px`;
-        }
+        this.modalEl.classList.add('bibtex-integration');
     }
 
     onClose() {
