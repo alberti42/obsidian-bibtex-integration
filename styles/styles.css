@@ -4,6 +4,11 @@
 	width: 100%;
 }
 
+.bibtex-integration .suggestion-item div {
+	font-family: monospace;
+	font-size: var(--font-small);
+}
+
 .bibtex-integration-suggestions {
     display: flex;
     justify-content: space-between; /* Distribute space between items */
@@ -14,28 +19,26 @@
 }
 
 .bibtex-integration-suggestions div {
-    white-space: nowrap; /* Prevent text from wrapping */
-    overflow: hidden; /* Hide overflow if text is too long */
+    white-space: nowrap;
+	overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .bibtex-integration-authors {
-    flex: 0 0 10%; /* Fixed 10% width for authors */
-    text-overflow: ellipsis; /* Show ellipsis for overflowed text */
+    flex: 0 0 15%;
 }
 
 .bibtex-integration-title {
-    flex: 0 0 55%; /* Fixed 55% width for title */
+    flex: 0 0 50%;
     font-weight: var(--font-semibold);
-    text-overflow: ellipsis; /* Show ellipsis for overflowed text */
 }
 
 .bibtex-integration-jref {
-    flex: 1 1 auto; /* Allow journal reference to grow/shrink dynamically */
-    text-align: left; /* Align journal reference to the left */
-    text-overflow: ellipsis; /* Show ellipsis for overflowed text */
+    flex: 1 1 auto;
+    text-align: left;
 }
 
 .bibtex-integration-citekey {
-    flex: 1 1 auto; /* Allow citekey to grow/shrink dynamically */
-    text-align: right; /* Align citekey to the right */
+    flex: 1 0 10%;
+    text-align: right;
 }
