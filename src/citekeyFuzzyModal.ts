@@ -8,6 +8,9 @@ import { BibTeXEntry, HighlightType, ParsedPathWithIndex } from 'types';
 import { createFolderIfNotExists, joinPaths, parseFilePath, resolveBookmark } from 'utils';
 import { BibtexManager, getBibDeskUriLink, getFormattedAuthors, getFormattedJournalReference, getFormattedTitle } from 'bibtex_manager';
 
+// Store the last query input 
+let lastQuery:string = "";
+
 async function openBdskDocument(
             app:App,
             pdf_folder:string,
@@ -100,12 +103,19 @@ abstract class BibEntriesFuzzyModal extends FuzzySuggestModal <BibTeXEntry> {
 		this.inputEl.focus();
 		this.containerEl.addEventListener('keydown', this.handleKeyDown);
 		this.modalEl.classList.add('bibtex-integration');
+
+        // Use the last query
+        this.inputEl.value = lastQuery;
+        this.updateSuggestions(); 
 	}
 
 	onClose() {
-		this.containerEl.removeEventListener('keydown', this.handleKeyDown);
-		super.onClose();
+        super.onClose();
+        this.containerEl.removeEventListener('keydown', this.handleKeyDown);
 		this.contentEl.empty();
+
+        // Store the value of the last query
+        lastQuery = this.inputEl.value;
 	}
 
 	private handleKeyDown = (evt: KeyboardEvent) => {
@@ -351,12 +361,19 @@ export class PdfFileFuzzyModal extends FuzzySuggestModal<ParsedPathWithIndex> {
         this.inputEl.focus();
         this.containerEl.addEventListener('keydown', this.handleKeyDown);
         this.modalEl.classList.add('bibtex-integration');
+
+        // Use the last query
+        this.inputEl.value = lastQuery;
+        this.updateSuggestions(); 
     }
 
     onClose() {
-        this.containerEl.removeEventListener('keydown', this.handleKeyDown);
         super.onClose();
+        this.containerEl.removeEventListener('keydown', this.handleKeyDown);
         this.contentEl.empty();
+
+        // Store the value of the last query
+        lastQuery = this.inputEl.value;
     }
 
     private handleKeyDown = (evt: KeyboardEvent) => {

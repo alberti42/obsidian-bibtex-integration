@@ -86,6 +86,7 @@ declare module "obsidian" {
         setSelectedItem: (index: number, scroll?: boolean) => void;
         setSuggestions: (items: T[]) => void;
         useSelectedItem: (event?: KeyboardEvent) => void;
+        updateSuggestions(): void;
     }
 
     interface WorkspaceLeaf {

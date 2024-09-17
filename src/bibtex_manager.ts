@@ -46,35 +46,37 @@ function parseAuthors(bibEntriesArray:BibTeXEntry[]) {
 
 export function getFormattedJournalReference(bibEntry: BibTeXEntry, options: JournalReferenceOptions = JournalReferenceOptionDefault) {
 
-    const journal = bibEntry.fields.journal ?? "";
+    const journal = bibEntry.fields.journal ?? null;
 
     const eprint = bibEntry.fields.eprint;
 
-    const isArxiv = journal.trim().toLowerCase() === 'arxiv' && eprint;
+    const isArxiv = journal && journal.trim().toLowerCase() === 'arxiv' && eprint;
 
     let journal_vol_page;
     if(isArxiv) {
         journal_vol_page = `${journal}:${eprint}`;
     } else {
-        let volume;
-        switch(options.highlightVolume) {
-        case HighlightType.HTML:
-            volume = `<strong>${bibEntry.fields.volume}</strong>` ?? ""
-            break;
-        case HighlightType.MarkDown:
-            volume = `**${bibEntry.fields.volume}**` ?? ""
-            break;
-        default:
-            volume = bibEntry.fields.volume ?? ""
+        let volume = null;
+        if(bibEntry.fields.volume) {
+            switch(options.highlightVolume) {
+            case HighlightType.HTML:
+                volume = `<strong>${bibEntry.fields.volume}</strong>`
+                break;
+            case HighlightType.MarkDown:
+                volume = `**${bibEntry.fields.volume}**`
+                break;
+            default:
+                volume = bibEntry.fields.volume
+            }    
         }
-        const page = bibEntry.fields.page ?? "";
-        const bothVolPage = [volume,page].join(',')
-        journal_vol_page = [journal,bothVolPage].join(' ');
+        const page = bibEntry.fields.page ?? null;
+        const bothVolPage = [volume,page].filter((x)=>x!==null).join(',')
+        journal_vol_page = [journal,bothVolPage].filter((x)=>x!==null).join(' ');
     }
     
-    const year = `(${bibEntry.fields.year})` ?? "";
+    const year = bibEntry.fields.year ? `(${bibEntry.fields.year})` : null;
 
-    const journalRef = [journal_vol_page,year].join(' ');
+    const journalRef = [journal_vol_page,year].filter((x)=>x!==null).join(' ');
 
     return journalRef;
 }
