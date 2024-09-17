@@ -39,6 +39,6 @@
 }
 
 .bibtex-integration-citekey {
-    flex: 1 0 10%;
+    flex: 1 0 10ch;
     text-align: right;
 }
