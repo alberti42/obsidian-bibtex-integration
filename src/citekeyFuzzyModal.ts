@@ -63,14 +63,15 @@ async function openBdskDocument(
 }
 
 function insertTextAtCursor(app: App, text: string) {
-    // Get the active leaf (tab)
-    const leaf = app.workspace.activeLeaf;
+    // Find the current Markdown editor
+    const activeView:MarkdownView|null = app.workspace.getActiveViewOfType(MarkdownView);
+    const leaf = activeView ? activeView.leaf : null;
 
     // Ensure the leaf is open and writable (not pinned)
-    if (leaf && leaf.view instanceof MarkdownView && !leaf.view.leaf.getViewState().pinned) {
+    if (leaf && !leaf.view.leaf.getViewState().pinned) {
         // Get the editor instance from the leaf
-        const editor = leaf.view.editor;
-
+        const editor = activeView ? activeView.editor : null;
+        
         if (editor) {
             // Get the current cursor position
             const cursor = editor.getCursor();
