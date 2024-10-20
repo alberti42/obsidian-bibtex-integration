@@ -203,6 +203,14 @@ export default class BibtexIntegration extends Plugin {
         unwatchFile();
     }
 
+    async onExternalSettingsChange() {
+        // Load settings
+        await this.loadSettings();
+
+        const activeTab = this.app.setting.activeTab;
+        if(activeTab && activeTab instanceof BibtexIntegrationSettingTab) activeTab.display();
+    }
+
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     }
